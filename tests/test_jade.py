@@ -27,7 +27,7 @@ class TestEntryPoints(unittest.TestCase):
 
     def test_version(self):
         res = self.call('version')
-        self.assertTrue(res, sherlock.__version__)
+        self.assertTrue(res, jade.__version__)
         return
 
     def test_extract(self):

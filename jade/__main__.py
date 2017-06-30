@@ -12,8 +12,7 @@ import sys
 import argparse
 import logging
 
-from jade import __version__
-from jade import Learner
+from . import __version__
 
 
 # args
