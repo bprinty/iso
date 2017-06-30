@@ -1,0 +1,6 @@
+numpy>=1.9.2
+cached-property>=1.2.0
+gems>=0.2.1
+joblib>=0.7.1
+scipy>=0.15.1
+scikit-learn>=0.18.1

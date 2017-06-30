@@ -1,0 +1,24 @@
+input:
+    - TSLA
+    - AMD
+    - NVDIA
+
+learner:
+    transform:
+        - MarketRange:
+            start: 01-01-2014
+            stop: 12-31-2014
+            cache: True
+        - BullishMarket:
+            period: 1w
+            resolution: 2h
+            cache: True
+
+    model:
+        sklearn.neural_network.MLPClassifier:
+            hidden_layer_sizes: (100, 50, 25)
+
+validator:
+    jade.CrossValidate:
+        folds: 5
+
