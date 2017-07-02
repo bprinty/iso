@@ -9,48 +9,15 @@
 # imports
 # -------
 import os
-import re
 import numpy
-import warnings
-from copy import deepcopy
 from sklearn.base import BaseEstimator, TransformerMixin
-from sklearn.neural_network import MLPClassifier
-from sklearn.externals import joblib
-from sklearn.decomposition import PCA
-from sklearn.model_selection import GridSearchCV
-from sklearn import metrics
-from sklearn.model_selection import train_test_split, KFold, LeaveOneOut, ShuffleSplit
-from sklearn.exceptions import UndefinedMetricWarning
-from gems import composite
+from copy import deepcopy
 
 from .jade import session
 
 
-# config
-# ------
-warnings.simplefilter("ignore", UndefinedMetricWarning)
-
-
-# helpers
+# classes
 # -------
-def flatten(array):
-    if len(array) == 0 or isinstance(array, pandas.DataFrame):
-        return array
-    if isinstance(array[0], (list, tuple, numpy.ndarray, pandas.DataFrame)):
-        res = []
-        for item in list(array):
-            if isinstance(item, pandas.DataFrame):
-                res.append(item)
-            else:
-                res.extend(item)
-        array = res
-        if isinstance(array[0], pandas.DataFrame):
-            array = pandas.concat(array)
-            array = array.reset_index(drop=True)
-    return array
-
-
-
 class Transform(BaseEstimator, TransformerMixin):
     """
     Data transform operator, transforming data from one space
@@ -194,7 +161,11 @@ class Transform(BaseEstimator, TransformerMixin):
             if Y is None:
                 tx, ty = self.transform(x)
             else:
-                tx, ty = self.transform(x, Y[ix])
+                # the index for Y needs to be capped, because when
+                # vectorization is applied in the context of prediction
+                # via learner, we can't guarantee that the predictors
+                # and original truth are the same length
+                tx, ty = self.transform(x, Y[min(ix, len(Y) - 1)])
                 self._Y.append(ty)
             self._X.append(tx)
         self._X = numpy.array(self._X)
@@ -239,7 +210,7 @@ class Transform(BaseEstimator, TransformerMixin):
             if Y is None:
                 tx, ty = self.inverse_transform(x)
             else:
-                tx, ty = self.inverse_transform(x, Y[ix])
+                tx, ty = self.inverse_transform(x, Y[min(ix, len(Y) - 1)])
                 self._iY.append(ty)
             self._iX.append(tx)
         self._iX = numpy.array(self._iX)
@@ -321,7 +292,7 @@ class ComplexTransform(BaseEstimator, TransformerMixin):
             if Y is None:
                 self.register(x)
             else:
-                self.register(x, Y[ix])
+                self.register(x, Y[min(ix, len(Y) - 1)])
 
         # parameterize
         self.parameterize()
@@ -333,7 +304,7 @@ class ComplexTransform(BaseEstimator, TransformerMixin):
             if Y is None:
                 tx, ty = self.transform(x)
             else:
-                tx, ty = self.transform(x, Y[ix])
+                tx, ty = self.transform(x, Y[min(ix, len(Y) - 1)])
                 self._Y.append(ty)
             self._X.append(tx)
         self._X = numpy.array(self._X)
@@ -390,5 +361,5 @@ class CompositeTransform(Transform):
         tx, ty = X, Y
         for xf in self.transforms:
             tx, ty = xf.inverse_fit_transform(tx, ty)
-        self._X = tx, self._Y = ty
+        self._iX, self._iY = tx, ty
         return self

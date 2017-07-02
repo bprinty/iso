@@ -13,7 +13,7 @@ import re
 import numpy
 import warnings
 from sklearn.base import BaseEstimator
-from sklearn.neural_network import MLPClassifier
+from sklearn.svm import SVC
 from sklearn.externals import joblib
 from gems import composite
 
@@ -33,8 +33,11 @@ class Learner(BaseEstimator):
             targets and responses into a ai-readable format.
         model (obj): Classifier to use in learning.
     """
+    _X = None
+    _Y = None
+    _Z = None
 
-    def __init__(self, transform, model=MLPClassifier()):
+    def __init__(self, transform, model=SVC()):
         if isinstance(transform, (list, tuple)):
             transform = CompositeTransform(*transform)
         self.vectorizer = transform
@@ -99,6 +102,41 @@ class Learner(BaseEstimator):
         )
         return
 
+    def flatten(self, X, Y):
+        """
+        "Flatten" input, changing dimensionality into
+        something conducive to AI model development. In a nutshell,
+        this decreases the dimensionality of predictors and responses
+        until the response vector is one-dimensional.
+        """
+        fX, fY, fZ = [], [], []
+        if isinstance(Y, (list, tuple, numpy.ndarray)):
+            for idx in range(0, len(X)):
+                dat = self.flatten(X[idx], Y[idx])
+                fX.extend(dat[0])
+                fY.extend(dat[1])
+                fZ.append(len(X[idx]))
+        else:
+            return [X], [Y]
+        return numpy.array(fX), numpy.array(fY), fZ
+
+    def inverse_flatten(self, X, Y, Z):
+        """
+        "Inverse flatten" input, changing dimensionality back into
+        space that can be back-transformed into something
+        human-interpretable.
+        """
+        fX, fY = [], []
+        if len(Z) < len(Y):
+            tY, tX = [], []
+            cidx = 0
+            for iz, z in enumerate(Z):
+                tX.append(X[cidx:(cidx + z)])
+                tY.append(Y[cidx:(cidx + z)])
+                cidx = cidx + z
+            X, Y = numpy.array(tX), numpy.array(tY)
+        return X, Y
+
     def transform(self, X, Y=None):
         """
         Transform input data into ai-ready tensor.
@@ -112,41 +150,34 @@ class Learner(BaseEstimator):
         Train learner for speicific data indices.
         """
         tX, tY = self.vectorizer.fit_transform(X, Y)
-
-        fX, fY = [], []
-        for i in range(0, len(tY)):
-            if isinstance(tY[i], (list, tuple, numpy.ndarray)):
-                for j in range(0, len(tY[i])):
-                    if isinstance(tY[i][j], (list, tuple, numpy.ndarray)):
-                        for k in range(0, len(tY[i][j])):
-                            fY.append(tY[i][j][k])
-                            fX.append(tX[i][j][k])
-                    else:
-                        fY.append(tY[i][j])
-                        fX.append(tX[i][j])
-            else:
-                fY.append(tY[i])
-                fX.append(tX[i])
-        fX, fY = numpy.array(fX), numpy.array(fY)
-        # print fX, fY
-        # print fX, fY
-        # flatten ...
-        self.model.fit(fX, fY)
+        self._X, self._Y, self._Z = self.flatten(tX, tY)
+        self.model.fit(self._X, self._Y)
         return self
+
+    def fit_transform(self, X, Y):
+        self.fit(X, Y)
+        return self._X, self._Y
 
     def fit_predict(self, X, Y):
         """
         Fit models to data and return prediction.
         """
         self.fit(X, Y)
-        return self.predict(X)
+        pY = self.model.predict(self._X)
+        fX, fY = self.inverse_flatten(self._X, pY, self._Z)
+        rX, rY = self.vectorizer.inverse_fit_transform(fX, fY)
+        return rY
 
     def predict(self, X):
         """
         Predict results from new data.
         """
+        if self._Y is None:
+            raise AssertionError('Model has not been fit! Cannot make predictions for new data.')
         obj = self.vectorizer.clone()
-        tX, tY = obj.fit_transform(X)
-        # flatten ...
-        tx, ty = obj.inverse_fit_transform(tx, ty)
-        return ty
+        tX, tY = obj.fit_transform(X, self._Y)
+        fX, fY, fZ = self.flatten(tX, tY)
+        pY = self.model.predict(fX)
+        fX, fY = self.inverse_flatten(fX, pY, fZ)
+        rX, rY = obj.inverse_fit_transform(fX, pY)
+        return rY

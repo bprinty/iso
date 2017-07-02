@@ -26,8 +26,8 @@ class TestLearn(unittest.TestCase):
     truth = [False] * 20 + [True] * 20
     data = [{'sin': i} for i in numpy.linspace(5, 10, 10)] + \
            [{'cos': i} for i in numpy.linspace(5, 10, 10)] + \
-           [{'sin': i} for i in numpy.linspace(10, 15, 10)] + \
-           [{'cos': i} for i in numpy.linspace(10, 15, 10)]
+           [{'sin': i} for i in numpy.linspace(11, 15, 10)] + \
+           [{'cos': i} for i in numpy.linspace(11, 15, 10)]
 
     def test_transform(self):
         learner = Learner(
@@ -61,12 +61,35 @@ class TestLearn(unittest.TestCase):
         return
 
     def test_fit_predict(self):
+        # composite transform
         learner = Learner(
             transform=[
                 VariableSignalGenerator(),
                 SegmentSignal()
             ]
         )
-        # pred = learner.fit_predict(self.data, self.truth)
+        pred = learner.fit_predict(self.data, self.truth)
+        self.assertEqual(list(pred), self.truth)
+
+        # non-composite transform
+        learner = Learner(
+            transform=VariableSignalGenerator()
+        )
+        pred = learner.fit_predict(self.data, self.truth)
+        self.assertEqual(list(pred), self.truth)
+        return
+
+    def test_predict(self):
+        learner = Learner(
+            transform=[
+                VariableSignalGenerator(),
+                SegmentSignal()
+            ]
+        )
+        learner.fit(self.data, self.truth)
+        pred = learner.predict([{'sin': 2}])
+        self.assertEqual(pred[0], False)
+        pred = learner.predict([{'sin': 12}])
+        self.assertEqual(pred[0], True)
         return
 

@@ -61,10 +61,9 @@ class SegmentSignal(Transform):
         return tx, y
 
     def inverse_transform(self, x, y=None):
-        tx, ty = [], []
+        tx, ty = [], None
         for idx, arr in enumerate(x):
-            tx.extend(arr)
-            if y is not None:
-                ty.append(numpy.median(y[idx]))
-        ty = ty if y is not None else y
+            tx.extend(x[idx])
+        if y is not None:
+            ty = numpy.median(y) == 1
         return tx, ty
