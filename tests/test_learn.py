@@ -14,7 +14,7 @@ import numpy
 
 from jade import Learner
 from . import __base__, __resources__, tmpfile
-from .utils import VariableSignalGenerator, SegmentSignal
+from .utils import VariableSignalGenerator, SegmentSignal, WhiteNoise
 
 
 # tests
@@ -47,6 +47,24 @@ class TestLearn(unittest.TestCase):
         learner = Learner(
             transform=[
                 VariableSignalGenerator(),
+                SegmentSignal()
+            ]
+        )
+        learner.fit(self.data, self.truth)
+        pred = learner.model.predict(numpy.matrix([
+            learner.vectorizer._X[0][0],
+            learner.vectorizer._X[1][0],
+            learner.vectorizer._X[-2][0],
+            learner.vectorizer._X[-1][0]
+        ]))
+        self.assertEqual(list(pred), [False, False, True, True])
+        return
+
+    def test_fit_with_simulator(self):
+        learner = Learner(
+            transform=[
+                VariableSignalGenerator(),
+                WhiteNoise(),
                 SegmentSignal()
             ]
         )
@@ -93,3 +111,19 @@ class TestLearn(unittest.TestCase):
         self.assertEqual(pred[0], True)
         return
 
+    def test_predict_with_simulator(self):
+        learner = Learner(
+            transform=[
+                VariableSignalGenerator(),
+                WhiteNoise(clones=2),
+                SegmentSignal()
+            ]
+        )
+        learner.fit(self.data, self.truth)
+        pred = learner.predict([{'sin': 2}])
+        self.assertEqual(pred[0], False)
+        self.assertEqual(len(pred), 1)
+        pred = learner.predict([{'sin': 12}, {'sin': 13}])
+        self.assertEqual(pred[0], True)
+        self.assertEqual(len(pred), 2)
+        return

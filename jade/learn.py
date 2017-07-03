@@ -38,8 +38,9 @@ class Learner(BaseEstimator):
     _Z = None
 
     def __init__(self, transform, model=SVC()):
-        if isinstance(transform, (list, tuple)):
-            transform = CompositeTransform(*transform)
+        # use composite transform for everything, so that
+        # simulation processors can be skipped during prediction
+        transform = CompositeTransform(transform)
         self.vectorizer = transform
         self.model = model
         return
@@ -175,7 +176,7 @@ class Learner(BaseEstimator):
         if self._Y is None:
             raise AssertionError('Model has not been fit! Cannot make predictions for new data.')
         obj = self.vectorizer.clone()
-        tX, tY = obj.fit_transform(X, self._Y)
+        tX, tY = obj.fit_transform(X, self._Y, pred=True)
         fX, fY, fZ = self.flatten(tX, tY)
         pY = self.model.predict(fX)
         fX, fY = self.inverse_flatten(fX, pY, fZ)

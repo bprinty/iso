@@ -97,7 +97,7 @@ class Transform(BaseEstimator, TransformerMixin):
             return None
 
     @property
-    def targets(self):
+    def X(self):
         """
         Return the targets that the transform produced. This property
         will be set with new data onece the fit() method has been called.
@@ -105,7 +105,7 @@ class Transform(BaseEstimator, TransformerMixin):
         return self._X
 
     @property
-    def inverse_targets(self):
+    def iX(self):
         """
         Return the targets that the transform produced. This property
         will be set with new data onece the fit() method has been called.
@@ -113,7 +113,7 @@ class Transform(BaseEstimator, TransformerMixin):
         return self._iX
 
     @property
-    def responses(self):
+    def Y(self):
         """
         Return the reponse that the transform produced. This property
         will be set with new data onece the fit() method has been called.
@@ -121,12 +121,22 @@ class Transform(BaseEstimator, TransformerMixin):
         return self._Y
 
     @property
-    def inverse_responses(self):
+    def iY(self):
         """
         Return the reponse that the transform produced. This property
         will be set with new data onece the fit() method has been called.
         """
         return self._iY
+
+    def add_block(self, dest, block):
+        """
+        Add singular "block" to internal variable representing
+        either data or truth vectors. By abstracting this into a function,
+        it enables other types of processors (i.e. Simulators) to more
+        easily change fitting functionality.
+        """
+        self.__dict__['_{}'.format(dest)].append(block)
+        return
     
     def fit(self, X, Y=None):
         """
@@ -166,8 +176,8 @@ class Transform(BaseEstimator, TransformerMixin):
                 # via learner, we can't guarantee that the predictors
                 # and original truth are the same length
                 tx, ty = self.transform(x, Y[min(ix, len(Y) - 1)])
-                self._Y.append(ty)
-            self._X.append(tx)
+                self.add_block('Y', ty)
+            self.add_block('X', tx)
         self._X = numpy.array(self._X)
         self._Y = numpy.array(self._Y) if Y is not None else Y
         
@@ -211,8 +221,8 @@ class Transform(BaseEstimator, TransformerMixin):
                 tx, ty = self.inverse_transform(x)
             else:
                 tx, ty = self.inverse_transform(x, Y[min(ix, len(Y) - 1)])
-                self._iY.append(ty)
-            self._iX.append(tx)
+                self.add_block('iY', ty)
+            self.add_block('iX', tx)
         self._iX = numpy.array(self._iX)
         self._iY = numpy.array(self._iY) if Y is not None else Y
         return self
@@ -305,8 +315,8 @@ class ComplexTransform(BaseEstimator, TransformerMixin):
                 tx, ty = self.transform(x)
             else:
                 tx, ty = self.transform(x, Y[min(ix, len(Y) - 1)])
-                self._Y.append(ty)
-            self._X.append(tx)
+                self.add_block('Y', ty)
+            self.add_block('X', tx)
         self._X = numpy.array(self._X)
         self._Y = numpy.array(self._Y) if Y is not None else Y
         
@@ -314,6 +324,79 @@ class ComplexTransform(BaseEstimator, TransformerMixin):
         if self.cache:
             self.save(X, Y)
         return self
+
+
+class Simulator(Transform):
+    """
+    Transform for simulating new data for model building. These
+    transformations don't change the dimensionality of data, they
+    just allow for data augmentation for fitting operations.
+    """
+
+    def add_block(self, dest, block):
+        if not isinstance(block, (list, tuple, numpy.ndarray)):
+            raise AssertionError('Error: Simulation transform methods must produce vector type!')
+        self.__dict__['_{}'.format(dest)].extend(block)
+        return
+
+    def inverse_fit(self, X, Y=None):
+        """
+        For simulation, no inverse transform is necessary, since
+        data already have the dimensionality they need.
+
+        Args:
+            X (numpy.array): Array with targets to apply transformation to.
+            Y (numpy.array): Array with responses to apply transformation to.
+        """
+        self._iX, self._iY = X, Y
+        return self
+
+    def transform(self, x, y=None):
+        """
+        Apply transformation to a single element in target space.
+
+        Args:
+            x (object): Single target to apply transformation to.
+            y (object): Single response to apply transformation to.
+        """
+        return [x], [y]
+
+
+class ComplexSimulator(ComplexTransform):
+    """
+    Transform for simulating new data for model building in a way
+    that requires a peak at the data before data are simulated. These
+    transformations don't change the dimensionality of data, they
+    just 
+    """
+    def add_block(self, dest, block):
+        if not isinstance(block, (list, tuple, numpy.ndarray)):
+            raise AssertionError('Error: Simulation transform methods must produce vector type!')
+        self.__dict__['_{}'.format(dest)].extend(block)
+        return
+
+    def inverse_fit(self, X, Y=None):
+        """
+        For simulation, no inverse transform is necessary, since
+        data already have the dimensionality they need.
+
+        Args:
+            X (numpy.array): Array with targets to apply transformation to.
+            Y (numpy.array): Array with responses to apply transformation to.
+        """
+        self._iX, self._iY = X, Y
+        return self
+
+    def transform(self, x, y=None):
+        """
+        Apply transformation to a single element in target space.
+
+        Args:
+            x (object): Single target to apply transformation to.
+            y (object): Single response to apply transformation to.
+        """
+        return [x], [y]
+
 
 
 # vectorizers
@@ -328,16 +411,18 @@ class CompositeTransform(Transform):
             raise AssertionError('No transforms specified!')
         if isinstance(args[0], (list, tuple)):
             args = args[0]
-        self.transforms = args
+        self.transforms = []
+        for arg in args:
+            self.add(arg)
         return
 
     def add(self, transform):
-        if not isinstance(arg, Transform):
-            raise AssertionError('Inputs to vectorizer must be transform operator!')
-        self.transforms.append(arg)
+        if not isinstance(transform, Transform):
+            raise AssertionError('No rule for transforming data with {} object!'.format(str(type(transform))))
+        self.transforms.append(transform)
         return
 
-    def fit(self, X, Y=None):
+    def fit(self, X, Y=None, pred=False):
         # load from cache (if specified)
         if self.cache:
             data = self.load(X, Y)
@@ -348,13 +433,25 @@ class CompositeTransform(Transform):
         # fit individual transforms
         tx, ty = X, Y
         for xf in self.transforms:
-            tx, ty = xf.fit_transform(tx, ty)
+            if not (pred and isinstance(xf, (Simulator, ComplexSimulator))):
+                tx, ty = xf.fit_transform(tx, ty)
         self._X, self._Y = tx, ty
 
         # save to cache (if specified)
         if self.cache:
             self.save(X, Y)
         return self
+
+    def fit_transform(self, X, Y=None, pred=False):
+        """
+        Fit and transform full input target space.
+
+        Args:
+            X (numpy.array): Array with targets to apply transformation to.
+            Y (numpy.array): Array with responses to apply transformation to.
+        """
+        self.fit(X, Y, pred=pred)
+        return self._X, self._Y
 
     def inverse_fit(self, X, Y=None):
         # inverse fit individual transforms

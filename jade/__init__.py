@@ -14,5 +14,7 @@ from .jade import options
 from .transform import Transform
 from .transform import ComplexTransform
 from .transform import CompositeTransform
+from .transform import Simulator
+from .transform import ComplexSimulator
 
 from .learn import Learner

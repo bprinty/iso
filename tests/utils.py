@@ -10,7 +10,7 @@
 # -------
 import numpy
 
-from jade import Transform, ComplexTransform, CompositeTransform
+from jade import Transform, ComplexTransform, Simulator, ComplexSimulator, CompositeTransform
 
 
 # transforms
@@ -66,4 +66,21 @@ class SegmentSignal(Transform):
             tx.extend(x[idx])
         if y is not None:
             ty = numpy.median(y) == 1
+        return tx, ty
+
+
+class WhiteNoise(Simulator):
+
+    def __init__(self, mu=0, sigma=0.01, clones=2):
+        self.mu = mu
+        self.sigma = sigma
+        self.clones = clones
+        return
+
+    def transform(self, x, y=None):
+        ty = [y] * (self.clones + 1) if y is not None else y
+        tx = [x] + [
+            numpy.array(x) + numpy.random.normal(self.mu, self.sigma, size=len(x))
+            for i in range(0, self.clones)
+        ]
         return tx, ty
