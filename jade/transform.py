@@ -10,8 +10,11 @@
 # -------
 import os
 import numpy
+import joblib
 from sklearn.base import BaseEstimator, TransformerMixin
 from copy import deepcopy
+import hashlib
+import logging
 
 from .jade import session
 
@@ -48,13 +51,10 @@ class Transform(BaseEstimator, TransformerMixin):
         """
         X = numpy.array(X)
         Y = numpy.array(Y) if Y is not None else Y
-        args = numpy.array([(k, v) for k, v in self.__dict__.iteritems() if k[0] != '_'])
-        ba = args.tobytes()
-        bx = X.tobytes()
-        by = Y.tobytes() if Y is not None else ''
-        return abs(hash(ba + bx + by))
+        args = numpy.array([(k, v) for k, v in list(self.__dict__.items()) if k[0] != '_'], dtype=str)
+        return joblib.hash([args, X, Y], hash_name='md5')
 
-    def save(self, X, Y=None):
+    def save(self, X, Y=None, filename=None):
         """
         Cache model based on specified inputs. In the future, if the
         model is called with the same inputs and arguments, the transform doesn't
@@ -64,18 +64,23 @@ class Transform(BaseEstimator, TransformerMixin):
             X (numpy.array): Array with targets to apply transformation to.
             Y (numpy.array): Array with responses to apply transformation to.
         """
-        global session
-        cache = str(self.hash(X, Y))
-        dirname = os.path.join(session.data, self.__class__.__name__)
-        path = os.path.join(dirname, cache)
+        if filename is None:
+            global session
+            cache = str(self.hash(X, Y))
+            dirname = os.path.join(session.data, self.__class__.__name__)
+            if not os.path.exists(dirname):
+                os.makedirs(dirname)
+            path = os.path.join(dirname, cache)
+        else:
+            path = filename
         logging.info('Saving {} transformed data to {}.'.format(self.__class__.__name__, path))
-        joblib.dump(path, {
+        joblib.dump({
             'X': self._X,
             'Y': self._Y
-        })
+        }, path)
         return
 
-    def load(self, X, Y=None):
+    def load(self, X, Y=None, filename=None):
         """
         Load model based on specified inputs. If the model has been previously used
         to transform data with the same inputs and configuration, then we can
@@ -85,10 +90,13 @@ class Transform(BaseEstimator, TransformerMixin):
             X (numpy.array): Array with targets to apply transformation to.
             Y (numpy.array): Array with responses to apply transformation to.
         """
-        global session
-        cache = str(self.hash(X, Y))
-        dirname = os.path.join(session.data, self.__class__.__name__)
-        path = os.path.join(dirname, cache)
+        if filename is None:
+            global session
+            cache = str(self.hash(X, Y))
+            dirname = os.path.join(session.data, self.__class__.__name__)
+            path = os.path.join(dirname, cache)
+        else:
+            path = filename
         logging.info('Loading {} transformed data from {}.'.format(self.__class__.__name__, path))
         if os.path.exists(path):
             data = joblib.load(path)
@@ -416,13 +424,34 @@ class CompositeTransform(Transform):
             self.add(arg)
         return
 
+    def clone(self):
+        """
+        Clone object.
+        """
+        return self.__class__([xform.clone() for xform in self.transforms])
+
     def add(self, transform):
+        """
+        Add transform to internal transform list.
+        """
         if not isinstance(transform, Transform):
             raise AssertionError('No rule for transforming data with {} object!'.format(str(type(transform))))
         self.transforms.append(transform)
         return
 
     def fit(self, X, Y=None, pred=False):
+        """
+        Traverse data and apply individual transformations. During
+        this process, if the transformation is a simulator and the
+        fit is being applied for prediction, skip that transform.
+
+        Args:
+            X (numpy.array): Array with targets to apply transformation to.
+            Y (numpy.array): Array with responses to apply transformation to.
+            pred (bool): Whether or not the transform is being applied
+                for downstream prediction. If that's the case, simulators will
+                be skipped.
+        """
         # load from cache (if specified)
         if self.cache:
             data = self.load(X, Y)
@@ -449,11 +478,17 @@ class CompositeTransform(Transform):
         Args:
             X (numpy.array): Array with targets to apply transformation to.
             Y (numpy.array): Array with responses to apply transformation to.
+            pred (bool): Whether or not the transform is being applied
+                for downstream prediction. If that's the case, simulators will
+                be skipped.
         """
         self.fit(X, Y, pred=pred)
         return self._X, self._Y
 
     def inverse_fit(self, X, Y=None):
+        """
+
+        """
         # inverse fit individual transforms
         tx, ty = X, Y
         for xf in self.transforms:

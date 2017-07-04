@@ -4,7 +4,7 @@
 *.so
 
 # Packages
-*.egg
+*.egg*
 *.egg-info
 dist
 build
@@ -44,4 +44,6 @@ docs/_build
 
 # virtual environment
 .env
+.py2
+.py3
 

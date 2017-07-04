@@ -28,10 +28,29 @@ class TestTransform(unittest.TestCase):
         og = SignalGenerator(10, 1000)
         same = SignalGenerator(10, 1000)
         diff = SignalGenerator(5, 1000)
-        self.assertEqual(og.hash(['sin', 'cos']), 8305068211475842209)
+        self.assertEqual(len(og.hash(['sin', 'cos'])), 32)
         self.assertEqual(og.hash(['sin', 'cos']), same.hash(['sin', 'cos']))
         self.assertNotEqual(og.hash(['sin', 'cos']), same.hash(['sin', 'sin']))
         self.assertNotEqual(og.hash(['sin', 'cos']), diff.hash(['sin', 'cos']))
+        return
+
+    def test_caching(self):
+        pkl = tmpfile('.pkl')
+
+        # save
+        xform = SignalGenerator()
+        xform.fit(['sin', 'cos'])
+        xform.save(['sin', 'cos'], filename=pkl)
+        self.assertEqual(list(numpy.round(xform.X[0][:3], 4)), [0, 0.0063, 0.0126])
+        self.assertEqual(list(numpy.round(xform.X[1][:3], 4)), [1.0, 1.0, 0.9999])
+
+        # load
+        xform._X, xform._Y = None, None
+        X, Y = xform.load(['sin', 'cos'], filename=pkl)
+        self.assertEqual(xform.X, None)
+        self.assertEqual(xform.Y, None)
+        self.assertEqual(list(numpy.round(X[0][:3], 4)), [0, 0.0063, 0.0126])
+        self.assertEqual(list(numpy.round(X[1][:3], 4)), [1.0, 1.0, 0.9999])
         return
 
     def test_fit(self):

@@ -42,7 +42,7 @@ class VariableSignalGenerator(Transform):
         return
 
     def transform(self, x, y=None):
-        key = x.keys()[0]
+        key = list(x.keys())[0]
         freq = x[key]
         tx = self.funcs[key](2 * numpy.pi * freq * numpy.arange(self.samples) / self.samples)
         return tx, y
@@ -55,7 +55,7 @@ class SegmentSignal(Transform):
         return
 
     def transform(self, x, y=None):
-        tx = numpy.array([x[i:(i+self.chunksize)] for i in xrange(0, len(x), self.chunksize)])
+        tx = numpy.array([x[i:(i+self.chunksize)] for i in range(0, len(x), self.chunksize)])
         if y is not None:
             y = numpy.array([y] * len(tx))
         return tx, y

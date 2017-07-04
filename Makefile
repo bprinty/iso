@@ -33,8 +33,23 @@ clean:
 lint:
 	flake8 jade tests
 
-test:
-	nosetests -c setup.cfg tests
+test: test-py2 test-py3
+
+test-py2:
+	@echo "Running python2 tests ... "
+	if [ ! -e .py2 ]; then virtualenv .py2; fi
+	. .py2/bin/activate && \
+	pip install nose nose-parameterized && \
+	pip install -r requirements.txt && \
+	python setup.py test
+
+test-py3:
+	@echo "Running python3 tests ... "
+	if [ ! -e .py3 ]; then virtualenv -p python3 .py3; fi
+	. .py3/bin/activate && \
+	pip install nose nose-parameterized && \
+	pip install -r requirements.txt && \
+	python setup.py test
 
 tag:
 	VER=$(VERSION) && if [ `git tag | grep "$$VER" | wc -l` -ne 0 ]; then git tag -d $$VER; fi
