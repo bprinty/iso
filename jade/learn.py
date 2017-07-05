@@ -113,7 +113,7 @@ class Learner(BaseEstimator):
         fX, fY, fZ = [], [], []
         if isinstance(Y, (list, tuple, numpy.ndarray)):
             for idx in range(0, len(X)):
-                dat = self.flatten(X[idx], Y[idx])
+                dat = self.flatten(X[idx], Y[idx] if Y is not None else Y)
                 fX.extend(dat[0])
                 fY.extend(dat[1])
                 fZ.append(len(X[idx]))

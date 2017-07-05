@@ -20,7 +20,7 @@ from .utils import VariableSignalGenerator, SegmentSignal, WhiteNoise
 # tests
 # -----
 class TestLearn(unittest.TestCase):
-    # gnerate data:
+    # generate data:
     # here we're tyring to predict whether or not a
     # signal is above a periodicity of 5
     truth = [False] * 20 + [True] * 20

@@ -11,9 +11,14 @@ __version__ = '0.0.1'
 # -------
 from .jade import options
 
+from .feature import Feature
+from .feature import ComplexFeature
+from .feature import FeatureTransform
+
 from .transform import Transform
 from .transform import ComplexTransform
 from .transform import CompositeTransform
+
 from .transform import Simulator
 from .transform import ComplexSimulator
 

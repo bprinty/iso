@@ -19,13 +19,14 @@ import logging
 from .jade import session
 
 
-# classes
-# -------
+# transformation
+# --------------
 class Transform(BaseEstimator, TransformerMixin):
     """
     Data transform operator, transforming data from one space
     into another space for downstream processing.
     """
+    registered = True
     cache = False
     jobs = 1
     _X, _Y = None, None
@@ -172,6 +173,19 @@ class Transform(BaseEstimator, TransformerMixin):
         # else:
         #     results = joblib.Parallel(n_jobs=jobs)(joblib.delayed(_fit_vectorizer)(*arg) for arg in args)
 
+        # register
+        if not self.registered:
+            for ix, x in enumerate(X):
+                if self.registered:
+                    break
+                if Y is None:
+                    self.register(x)
+                else:
+                    self.register(x, Y[min(ix, len(Y) - 1)])
+
+        # parameterize
+        self.parameterize()
+
         # transform
         self._X = []
         self._Y = [] if Y is not None else Y
@@ -266,15 +280,6 @@ class Transform(BaseEstimator, TransformerMixin):
         """
         return x, y
 
-
-class ComplexTransform(BaseEstimator, TransformerMixin):
-    """
-    Complex data transform operator requiring two passes through the data - 
-    once for a "peek" at the landscape of the data, and another for
-    transforming the data into another space.
-    """
-    registered = False
-    
     def register(self, x, y=None):
         """
         Register a single element in target space.
@@ -291,49 +296,18 @@ class ComplexTransform(BaseEstimator, TransformerMixin):
         """
         return
 
-    def fit(self, X, Y=None):
-        # configure data
-        X = numpy.array(X)
-        Y = numpy.array(Y) if Y is not None else Y
-        
-        # load from cache (if specified)
-        if self.cache:
-            data = self.load(X, Y)
-            if data is not None:
-                self._X, self._Y = data
-                return
-        
-        # register
-        for ix, x in enumerate(X):
-            if self.registered:
-                break
-            if Y is None:
-                self.register(x)
-            else:
-                self.register(x, Y[min(ix, len(Y) - 1)])
 
-        # parameterize
-        self.parameterize()
-
-        # transform
-        self._X = []
-        self._Y = [] if Y is not None else Y
-        for ix, x in enumerate(X):
-            if Y is None:
-                tx, ty = self.transform(x)
-            else:
-                tx, ty = self.transform(x, Y[min(ix, len(Y) - 1)])
-                self.add_block('Y', ty)
-            self.add_block('X', tx)
-        self._X = numpy.array(self._X)
-        self._Y = numpy.array(self._Y) if Y is not None else Y
-        
-        # save to cache (if specified)
-        if self.cache:
-            self.save(X, Y)
-        return self
+class ComplexTransform(Transform):
+    """
+    Complex data transform operator requiring two passes through the data - 
+    once for a "peek" at the landscape of the data, and another for
+    transforming the data into another space.
+    """
+    registered = False
 
 
+# simulation
+# ----------
 class Simulator(Transform):
     """
     Transform for simulating new data for model building. These
@@ -370,41 +344,72 @@ class Simulator(Transform):
         return [x], [y]
 
 
-class ComplexSimulator(ComplexTransform):
+class ComplexSimulator(Simulator):
     """
     Transform for simulating new data for model building in a way
     that requires a peak at the data before data are simulated. These
     transformations don't change the dimensionality of data, they
     just 
     """
-    def add_block(self, dest, block):
-        if not isinstance(block, (list, tuple, numpy.ndarray)):
-            raise AssertionError('Error: Simulation transform methods must produce vector type!')
-        self.__dict__['_{}'.format(dest)].extend(block)
+    registered = False
+
+
+# flatteners
+# ----------
+class Flatten(Transform):
+    """
+    Transform for reducing dimensionality of input by specified
+    number of dimensions.
+    """
+
+    def __init__(self, depth=1):
+        self.depth = depth
         return
 
-    def inverse_fit(self, X, Y=None):
+    def fit(self, X, Y=None, depth=0):
         """
-        For simulation, no inverse transform is necessary, since
-        data already have the dimensionality they need.
-
-        Args:
-            X (numpy.array): Array with targets to apply transformation to.
-            Y (numpy.array): Array with responses to apply transformation to.
+        "Flatten" input, changing dimensionality into
+        something conducive to AI model development. In a nutshell,
+        this decreases the dimensionality of predictors and responses
+        until the response vector is one-dimensional.
         """
-        self._iX, self._iY = X, Y
+        fX, fY, fZ = [], [], []
+        if depth < self.depth:
+            for idx in range(0, len(X)):
+                dat = self.fit(X[idx], Y[idx] if Y is not None else Y, depth=depth+1)
+                fX.extend(dat[0])
+                fY.extend(dat[1])
+                fZ.append(len(X[idx]))
+        else:
+            return [X], [Y] if Y is not None else Y
+        self._X = fX
+        self._Y = fY
+        self._Z = fZ
         return self
 
-    def transform(self, x, y=None):
+    def inverse_fit(self, X, Y=None, Z=None):
         """
-        Apply transformation to a single element in target space.
-
-        Args:
-            x (object): Single target to apply transformation to.
-            y (object): Single response to apply transformation to.
+        "Inverse flatten" input, changing dimensionality back into
+        space that can be back-transformed into something
+        human-interpretable.
         """
-        return [x], [y]
-
+        if Z is None:
+            Z = self._Z
+        fX, fY = [], []
+        cidx = 0
+        for idx in range(0, len(Z)):
+            if isinstance(Z[idx], (list, tuple, numpy.ndarray)):
+                dat = self.inverse_fit(X[idx], Y[idx] if Y is not None else Y, Z[idx])
+                fx, fy = dat[0], dat[1]
+            else:
+                fx = X[cidx:(cidx + Z[idx])]
+                fy = Y[cidx:(cidx + Z[idx])] if Y is not None else Y
+            fX.append(fx)
+            fY.append(fy)
+            cidx += Z[idx]
+        self._iX = fX
+        self._iY = fY if Y is not None else Y
+        return self
 
 
 # vectorizers
