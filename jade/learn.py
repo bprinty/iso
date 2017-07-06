@@ -12,12 +12,14 @@ import os
 import re
 import numpy
 import warnings
+import pandas
 from sklearn.base import BaseEstimator
 from sklearn.svm import SVC
 from sklearn.externals import joblib
 from gems import composite
 
 from .transform import TransformChain, Flatten
+from .feature import FeatureTransform
 
 
 # model building

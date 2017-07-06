@@ -30,15 +30,16 @@ class Feature(Transform):
     """
     __depends__ = ()
 
+    @property
     def name(self):
         """
         Return consolidated name of processor. This allows from name
         determination from the __name__, _name and __class__.__name__
         properties, with that heiarchy.
         """
-        if self.__name__ is not None:
+        if hasattr(self, '__name__'):
             return self.__name__
-        elif self._name is not None:
+        elif hasattr(self, '_name'):
             return self._name
         else:
             return self.__class__.__name__
