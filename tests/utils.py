@@ -10,7 +10,7 @@
 # -------
 import numpy
 
-from jade import Transform, ComplexTransform, CompositeTransform
+from jade import Transform, ComplexTransform, TransformChain
 from jade import Simulator, ComplexSimulator
 from jade import Feature, FeatureTransform
 
@@ -69,7 +69,7 @@ class SegmentSignal(Transform):
         for idx, arr in enumerate(x):
             tx.extend(x[idx])
         if y is not None:
-            ty = numpy.median(y) == 1
+            ty = numpy.median(y) > 0
         return tx, ty
 
 
@@ -93,7 +93,7 @@ class WhiteNoise(Simulator):
 class NormalizedPower(Feature):
     
     def transform(self, x):
-        return numpy.sum(x) / numpy.size(x)
+        return numpy.sum(numpy.abs(x)) / numpy.size(x)
 
 
 class DominantFrequency(Feature):
@@ -107,6 +107,5 @@ class DominantFrequency(Feature):
         ft = numpy.fft.fftfreq(len(x), 1.0 / float(self.fs))
         pfreq = ft[numpy.where(ft >= 0)]
         pmag = abs(fx[numpy.where(ft >= 0)])
-        print pmag
-        print numpy.argmax(pmag)
-        return numpy.argmax(pmag)
+        idx = numpy.argmax(pmag)
+        return pfreq[idx]

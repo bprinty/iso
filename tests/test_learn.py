@@ -100,8 +100,8 @@ class TestLearn(unittest.TestCase):
     def test_predict(self):
         learner = Learner(
             transform=[
-                VariableSignalGenerator(),
-                SegmentSignal()
+                VariableSignalGenerator(fs=1000),
+                SegmentSignal(chunksize=20)
             ]
         )
         learner.fit(self.data, self.truth)
@@ -109,6 +109,17 @@ class TestLearn(unittest.TestCase):
         self.assertEqual(pred[0], False)
         pred = learner.predict([{'sin': 12}])
         self.assertEqual(pred[0], True)
+        
+        # try it out with a response vector bigger
+        # than the training response, to see if internal
+        # transforms and inverse transforms are applied correctly
+        data = [self.data[i] for i in range(0, len(self.data)) if i % 2]
+        truth = [self.truth[i] for i in range(0, len(self.truth)) if i % 2]
+        learner.fit(data, truth)
+        pred = learner.predict(self.data)
+        self.assertEqual(len(pred), len(self.data))
+        self.assertEqual(pred[0], False)
+        self.assertEqual(pred[-1], True)
         return
 
     def test_predict_with_simulator(self):

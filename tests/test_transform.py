@@ -12,7 +12,7 @@ import os
 import unittest
 import numpy
 
-from jade import Transform, ComplexTransform, CompositeTransform
+from jade import Transform, ComplexTransform, TransformChain, Flatten
 from . import __base__, __resources__, tmpfile
 from .utils import SignalGenerator
 from .utils import VariableSignalGenerator
@@ -92,6 +92,71 @@ class TestComplexTransform(unittest.TestCase):
         return
 
 
+class TestFlatten(unittest.TestCase):
+
+    def test_already_flat(self):
+        gen = TransformChain(
+            VariableSignalGenerator(fs=10000),
+            Flatten()
+        )
+        X, Y = gen.fit_transform([{'sin': 100}, {'cos': 150}], [0, 1])
+        self.assertEqual(len(X), 2)
+        self.assertEqual(len(X[0]), 10000)
+        self.assertEqual(list(Y), [0, 1])
+        return
+
+    def test_fit_transform(self):
+        # normal multi-layer transform
+        gen = TransformChain(
+            VariableSignalGenerator(fs=10000),
+            WhiteNoise(sigma=0.1, clones=2),
+            SegmentSignal(chunksize=200)
+        )
+        X, Y = gen.fit_transform([{'sin': 100}, {'cos': 150}], [0, 1])
+        self.assertEqual(len(X), len(Y))
+        self.assertEqual(len(X), 6)
+        self.assertEqual(len(X[0]), len(Y[0]))
+        self.assertEqual(len(X[0]), 50)
+        self.assertEqual(len(X[0][0]), 200)
+
+        # add flattening layer
+        gen.add(Flatten())
+        X, Y = gen.fit_transform([{'sin': 100}, {'cos': 150}], [0, 1])
+        self.assertEqual(len(X), len(Y))
+        self.assertEqual(len(X), 300)
+        self.assertEqual(len(X[0]), 200)
+        return
+
+    def test_inverse_fit_transform(self):
+        # non-flattening transform
+        ogen = TransformChain(
+            VariableSignalGenerator(fs=10000),
+            WhiteNoise(sigma=0.1, clones=2),
+            SegmentSignal(chunksize=200)
+        )
+        
+        # flattening transform
+        fgen = ogen.clone()
+        fgen.add(Flatten())
+        
+        # transform/inverse-transform
+        fX, fY = fgen.fit_transform([{'sin': 100}, {'cos': 150}], [0, 1])
+        tX, tY = fgen.inverse_fit_transform(fX, fY)
+        
+        # expected inversion
+        fX, fY = ogen.fit_transform([{'sin': 100}, {'cos': 150}], [0, 1])
+        oX, oY = ogen.inverse_fit_transform(fX, fY)
+        
+        # check dimensionality
+        self.assertEqual(len(oX), len(tX))
+        self.assertEqual(len(oX[0]), len(tX[0]))
+        self.assertEqual(len(oY), len(tY))
+        self.assertEqual(list(oX[3]), list(tX[3]))
+        self.assertEqual(list(oY), list(tY))
+        return
+
+
+
 class TestSimulator(unittest.TestCase):
 
     def test_fit(self):
@@ -112,10 +177,10 @@ class TestComplexSimulator(unittest.TestCase):
         return
 
 
-class TestCompositeTransform(unittest.TestCase):
+class TestTransformChain(unittest.TestCase):
 
     def test_fit(self):
-        xform = CompositeTransform([
+        xform = TransformChain([
             SignalGenerator(),
             SegmentSignal()
         ])
@@ -131,7 +196,7 @@ class TestCompositeTransform(unittest.TestCase):
         return
 
     def test_fit_transform(self):
-        xform = CompositeTransform([
+        xform = TransformChain([
             SignalGenerator(),
             SegmentSignal()
         ])
@@ -149,7 +214,7 @@ class TestCompositeTransform(unittest.TestCase):
         return
 
     def test_fit_simulate(self):
-        xform = CompositeTransform([
+        xform = TransformChain([
             SignalGenerator(),
             WhiteNoise(clones=2),
             SegmentSignal()

@@ -362,11 +362,7 @@ class Flatten(Transform):
     number of dimensions.
     """
 
-    def __init__(self, depth=1):
-        self.depth = depth
-        return
-
-    def fit(self, X, Y=None, depth=0):
+    def fit(self, X, Y=None):
         """
         "Flatten" input, changing dimensionality into
         something conducive to AI model development. In a nutshell,
@@ -374,39 +370,47 @@ class Flatten(Transform):
         until the response vector is one-dimensional.
         """
         fX, fY, fZ = [], [], []
-        if depth < self.depth:
-            for idx in range(0, len(X)):
-                dat = self.fit(X[idx], Y[idx] if Y is not None else Y, depth=depth+1)
-                fX.extend(dat[0])
-                fY.extend(dat[1])
+        for idx in range(0, len(X)):
+            
+            # if the response vector is flat
+            if Y is not None and not isinstance(Y[idx], (list, tuple, numpy.ndarray)):
+                self._X, self._Y, self._Z = X, Y, None
+                return self
+            
+            # the predictor vector is already flat
+            elif not isinstance(X[idx], (list, tuple, numpy.ndarray)):
+                self._X, self._Y, self._Z = X, Y, None
+                return self
+            
+            # otherwise, flatten
+            else:
+                fX.extend(X[idx])
                 fZ.append(len(X[idx]))
-        else:
-            return [X], [Y] if Y is not None else Y
+                if Y is not None:
+                    fY.extend(Y[idx])
+        
+        # store the results
         self._X = fX
-        self._Y = fY
+        self._Y = fY if Y is not None else Y
         self._Z = fZ
         return self
 
-    def inverse_fit(self, X, Y=None, Z=None):
+    def inverse_fit(self, X, Y=None):
         """
         "Inverse flatten" input, changing dimensionality back into
         space that can be back-transformed into something
         human-interpretable.
         """
-        if Z is None:
-            Z = self._Z
-        fX, fY = [], []
+        if self._Z is None:
+            self._X, self._Y = X, Y
+            return self
         cidx = 0
-        for idx in range(0, len(Z)):
-            if isinstance(Z[idx], (list, tuple, numpy.ndarray)):
-                dat = self.inverse_fit(X[idx], Y[idx] if Y is not None else Y, Z[idx])
-                fx, fy = dat[0], dat[1]
-            else:
-                fx = X[cidx:(cidx + Z[idx])]
-                fy = Y[cidx:(cidx + Z[idx])] if Y is not None else Y
-            fX.append(fx)
-            fY.append(fy)
-            cidx += Z[idx]
+        fX, fY = [], []
+        for z in self._Z:
+            fX.append(X[cidx:(cidx + z)])
+            if Y is not None:
+                fY.append(Y[cidx:(cidx + z)])
+            cidx += z
         self._iX = fX
         self._iY = fY if Y is not None else Y
         return self
@@ -414,15 +418,13 @@ class Flatten(Transform):
 
 # vectorizers
 # -----------
-class CompositeTransform(Transform):
+class TransformChain(Transform):
     """
     Manager for all transpose layers.
     """
 
     def __init__(self, *args):
-        if len(args) == 0:
-            raise AssertionError('No transforms specified!')
-        if isinstance(args[0], (list, tuple)):
+        if len(args) != 0 and isinstance(args[0], (list, tuple)):
             args = args[0]
         self.transforms = []
         for arg in args:
@@ -492,11 +494,15 @@ class CompositeTransform(Transform):
 
     def inverse_fit(self, X, Y=None):
         """
+        Inverse fit and transform targets back into input space.
 
+        Args:
+            X (numpy.array): Array with targets to apply transformation to.
+            Y (numpy.array): Array with responses to apply transformation to.
         """
-        # inverse fit individual transforms
+        # inverse fit reversed individual transforms
         tx, ty = X, Y
-        for xf in self.transforms:
+        for xf in self.transforms[::-1]:
             tx, ty = xf.inverse_fit_transform(tx, ty)
         self._iX, self._iY = tx, ty
         return self

@@ -13,7 +13,7 @@ import unittest
 import numpy
 from sklearn.svm import SVC
 
-from jade import Transform, ComplexTransform, CompositeTransform
+from jade import Transform, ComplexTransform, TransformChain, Flatten
 from jade import FeatureTransform
 from . import __base__, __resources__, tmpfile
 from .utils import SignalGenerator
@@ -36,21 +36,20 @@ class TestFeatureTransform(unittest.TestCase):
            [{'cos': i} for i in numpy.linspace(11, 15, 10)]
 
     def test_transform(self):
-        generator = CompositeTransform(
+        generator = TransformChain(
             VariableSignalGenerator(fs=10000),
+            WhiteNoise(sigma=0.1, clones=2),
             SegmentSignal(chunksize=200),
+            Flatten()
         )
-        X, Y = generator.fit_transform([{'sin': 15}, {'cos': 22}])
-        tX = []
-        for i in range(0, len(X)):
-            for j in range(0, len(X[i])):
-                tX.append(X[i][j])
+        X, Y = generator.fit_transform([{'sin': 100}, {'cos': 150}])
         xform = FeatureTransform(
             NormalizedPower(),
-            DominantFrequency()
+            DominantFrequency(fs=10000)
         )
-        X, Y = xform.fit_transform(tX)
-        print X, Y
+        X, Y = xform.fit_transform(X, Y)
+        # print X, Y
+        # print X
         return
 
     def test_chained(self):
