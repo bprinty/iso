@@ -12,7 +12,6 @@ import os
 import re
 import numpy
 import warnings
-import pandas
 from sklearn.base import BaseEstimator
 from sklearn.svm import SVC
 from sklearn.externals import joblib
@@ -102,6 +101,15 @@ class Learner(BaseEstimator):
             ), filename
         )
         return
+
+    @property
+    def feature_names(self):
+        """
+        Return feature names if feature transform is part of vectorization.
+        """
+        if not isinstance(self.vectorizer.transforms[-1], FeatureTransform):
+            raise AssertionError('Last transformation must be feature transform to get feature names from learner.')
+        return self.vectorizer.transforms[-1].feature_names
 
     def flatten(self, X, Y):
         """

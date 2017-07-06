@@ -11,6 +11,7 @@
 import os
 import unittest
 import numpy
+import pandas
 
 from jade import Learner, Flatten, FeatureTransform
 from . import __base__, __resources__, tmpfile
@@ -42,6 +43,27 @@ class TestLearn(unittest.TestCase):
         self.assertEqual(list(numpy.round(X[1][1][:3], 4)), [-0.342, -0.3746, -0.4067])
         self.assertEqual(list(Y[0][:3]), [0, 0, 0])
         self.assertEqual(list(Y[-1][:3]), [1, 1, 1])
+        return
+
+    def test_transform_features(self):
+        learner = Learner(
+            transform=[
+                VariableSignalGenerator(fs=1000),
+                SegmentSignal(chunksize=200),
+                Flatten(),
+                FeatureTransform(
+                    NormalizedPower(),
+                    DominantFrequency(fs=1000)
+                )
+            ]
+        )
+        X, Y = learner.transform(self.data, self.truth)
+        self.assertEqual(len(Y), 200)
+        self.assertEqual(len(X), 200)
+        self.assertEqual(len(X[0]), 2)
+        df = pandas.DataFrame(X, columns=learner.feature_names)
+        self.assertEqual(len(df), 200)
+        self.assertEqual(list(df.columns), ['NormalizedPower', 'DominantFrequency'])
         return
 
     def test_fit(self):
