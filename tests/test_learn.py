@@ -12,7 +12,7 @@ import os
 import unittest
 import numpy
 
-from jade import Learner
+from jade import Learner, Flatten
 from . import __base__, __resources__, tmpfile
 from .utils import VariableSignalGenerator, SegmentSignal, WhiteNoise
 
@@ -127,7 +127,8 @@ class TestLearn(unittest.TestCase):
             transform=[
                 VariableSignalGenerator(),
                 WhiteNoise(clones=2),
-                SegmentSignal()
+                SegmentSignal(),
+                Flatten()
             ]
         )
         learner.fit(self.data, self.truth)
