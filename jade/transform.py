@@ -21,7 +21,7 @@ from .jade import session
 
 # transformation
 # --------------
-class Transform(BaseEstimator, TransformerMixin):
+class Transform(TransformerMixin):
     """
     Data transform operator, transforming data from one space
     into another space for downstream processing.
@@ -275,6 +275,7 @@ class Transform(BaseEstimator, TransformerMixin):
         Apply inverse transformation to a single element in target space.
 
         Args:
+            idx (int): Index of data in original data structure.
             x (object): Single target to apply transformation to.
             y (object): Single response to apply transformation to.
         """
@@ -370,24 +371,24 @@ class Flatten(Transform):
         until the response vector is one-dimensional.
         """
         fX, fY, fZ = [], [], []
-        for idx in range(0, len(X)):
+        for ix in range(0, len(X)):
             
             # if the response vector is flat
-            if Y is not None and not isinstance(Y[idx], (list, tuple, numpy.ndarray)):
+            if Y is not None and not isinstance(Y[min(ix, len(Y) - 1)], (list, tuple, numpy.ndarray)):
                 self._X, self._Y, self._Z = X, Y, None
                 return self
             
             # the predictor vector is already flat
-            elif not isinstance(X[idx], (list, tuple, numpy.ndarray)):
+            elif not isinstance(X[ix], (list, tuple, numpy.ndarray)):
                 self._X, self._Y, self._Z = X, Y, None
                 return self
             
             # otherwise, flatten
             else:
-                fX.extend(X[idx])
-                fZ.append(len(X[idx]))
+                fX.extend(X[ix])
+                fZ.append(len(X[ix]))
                 if Y is not None:
-                    fY.extend(Y[idx])
+                    fY.extend(Y[min(ix, len(Y) - 1)])
         
         # store the results
         self._X = fX
@@ -430,6 +431,36 @@ class TransformChain(Transform):
         for arg in args:
             self.add(arg)
         return
+
+    def __getitem__(self, key):
+        """
+        Return transform with in chain. If the input is a slice,
+        return a new TransformChain with that slice of transforms.
+        """
+        if isinstance(key, slice):
+            return TransformChain(self.transforms[key])
+        return self.transforms[key]
+
+    def __iter__(self):
+        """
+        Generator for the object. Returns individual transforms during
+        each phase of iteration.
+        """
+        for xf in self.transforms:
+            yield xf
+        return
+
+    @property
+    def has_simulator(self):
+        """
+        Return boolean describing whether or not chain has simulator.
+        This is used in learner objects to predict on data without
+        simulation for fit_predict methods.
+        """
+        for xf in self.transforms:
+            if isinstance(xf, Simulator):
+                return True
+        return False
 
     def clone(self):
         """

@@ -159,9 +159,16 @@ class Learner(BaseEstimator):
         Fit models to data and return prediction.
         """
         self.fit(X, Y)
-        pY = self.model.predict(self._X)
-        fX, fY = self.inverse_flatten(self._X, pY)
-        rX, rY = self.vectorizer.inverse_fit_transform(fX, fY)
+        if self.vectorizer.has_simulator:
+            # we don't want to make predictions on the simulated
+            # data, because it's only used to boost the training set
+            return self.predict(X)
+        else:
+            # if we can fully back-transform the data, there's
+            # no need to re-do the transformation process
+            pY = self.model.predict(self._X)
+            fX, fY = self.inverse_flatten(self._X, pY)
+            rX, rY = self.vectorizer.inverse_fit_transform(fX, fY)
         return rY
 
     def predict(self, X):
@@ -171,8 +178,8 @@ class Learner(BaseEstimator):
         if self._Y is None:
             raise AssertionError('Model has not been fit! Cannot make predictions for new data.')
         obj = self.vectorizer.clone()
-        tX, tY = obj.fit_transform(X, self._Y, pred=True)
-        fX, fY = self.flatten(tX, tY)
+        tX, tY = obj.fit_transform(X, None, pred=True)
+        fX, fY = self.flatten(tX, self.vectorizer[-1]._Y)
         pY = self.model.predict(fX)
         fX, fY = self.inverse_flatten(fX, pY)
         rX, rY = obj.inverse_fit_transform(fX, fY)
