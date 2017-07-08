@@ -11,6 +11,7 @@
 import os
 import unittest
 import numpy
+from sklearn.model_selection import cross_val_score
 
 from jade import Learner
 from . import __base__, __resources__, tmpfile
@@ -126,4 +127,24 @@ class TestLearn(unittest.TestCase):
         pred = learner.predict([{'sin': 12}, {'sin': 13}])
         self.assertEqual(pred[0], True)
         self.assertEqual(len(pred), 2)
+        return
+
+class TestExtensions(unittest.TestCase):
+    # gnerate data:
+    # here we're tyring to predict whether or not a
+    # signal is above a periodicity of 5
+    truth = [False] * 20 + [True] * 20
+    data = [{'sin': i} for i in numpy.linspace(5, 10, 10)] + \
+           [{'cos': i} for i in numpy.linspace(5, 10, 10)] + \
+           [{'sin': i} for i in numpy.linspace(11, 15, 10)] + \
+           [{'cos': i} for i in numpy.linspace(11, 15, 10)]
+
+    def test_scikit_validation(self):
+        learner = Learner(
+            transform=[
+                VariableSignalGenerator(),
+                SegmentSignal()
+            ]
+        )
+        print cross_val_score(learner, self.data, self.truth, cv=3)
         return

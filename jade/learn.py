@@ -12,7 +12,7 @@ import os
 import re
 import numpy
 import warnings
-from sklearn.base import BaseEstimator
+from sklearn.base import BaseEstimator, clone
 from sklearn.svm import SVC
 from sklearn.externals import joblib
 from gems import composite
@@ -44,6 +44,26 @@ class Learner(BaseEstimator):
         self.vectorizer = transform
         self.model = model
         return
+
+    def __copy__(self, kwargs):
+        print self.vectorizer.clone().transforms
+        return self.__class__(
+            transform=self.vectorizer.clone().transforms,
+            model=clone(self.model)
+        )
+
+    def __deepcopy__(self, kwargs):
+        return self.__copy__(kwargs)
+
+    # def get_params(self, deep=True):
+    #     return {
+    #         'transform': self.vectorizer.clone().transforms,
+    #         'model': clone(self.model)
+    #     }
+
+    # def set_params(self, **kwargs):
+    #     print kwargs
+    #     return self.__class__(**kwargs)
 
     @classmethod
     def from_config(cls, filename):
@@ -145,6 +165,10 @@ class Learner(BaseEstimator):
         obj = self.vectorizer.clone()
         X, Y = obj.fit_transform(X, Y)
         return X, Y
+
+    def score(self, X, Y=None, sample_weight=None):
+        X, Y = self.transform(X, Y)
+        return self.model.score(X, Y=Y, sample_weight=sample_weight)
 
     def fit(self, X, Y):
         """
