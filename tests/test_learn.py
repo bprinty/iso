@@ -12,16 +12,19 @@ import os
 import unittest
 import numpy
 from sklearn.model_selection import cross_val_score
+import pandas
+from nose.tools import nottest
 
-from jade import Learner
+from jade import Learner, Flatten, FeatureTransform
 from . import __base__, __resources__, tmpfile
 from .utils import VariableSignalGenerator, SegmentSignal, WhiteNoise
+from .utils import NormalizedPower, DominantFrequency
 
 
 # tests
 # -----
 class TestLearn(unittest.TestCase):
-    # gnerate data:
+    # generate data:
     # here we're tyring to predict whether or not a
     # signal is above a periodicity of 5
     truth = [False] * 20 + [True] * 20
@@ -42,6 +45,27 @@ class TestLearn(unittest.TestCase):
         self.assertEqual(list(numpy.round(X[1][1][:3], 4)), [-0.342, -0.3746, -0.4067])
         self.assertEqual(list(Y[0][:3]), [0, 0, 0])
         self.assertEqual(list(Y[-1][:3]), [1, 1, 1])
+        return
+
+    def test_transform_features(self):
+        learner = Learner(
+            transform=[
+                VariableSignalGenerator(fs=1000),
+                SegmentSignal(chunksize=200),
+                Flatten(),
+                FeatureTransform(
+                    NormalizedPower(),
+                    DominantFrequency(fs=1000)
+                )
+            ]
+        )
+        X, Y = learner.transform(self.data, self.truth)
+        self.assertEqual(len(Y), 200)
+        self.assertEqual(len(X), 200)
+        self.assertEqual(len(X[0]), 2)
+        df = pandas.DataFrame(X, columns=learner.feature_names)
+        self.assertEqual(len(df), 200)
+        self.assertEqual(list(df.columns), ['NormalizedPower', 'DominantFrequency'])
         return
 
     def test_fit(self):
@@ -101,8 +125,8 @@ class TestLearn(unittest.TestCase):
     def test_predict(self):
         learner = Learner(
             transform=[
-                VariableSignalGenerator(),
-                SegmentSignal()
+                VariableSignalGenerator(fs=1000),
+                SegmentSignal(chunksize=20)
             ]
         )
         learner.fit(self.data, self.truth)
@@ -110,6 +134,17 @@ class TestLearn(unittest.TestCase):
         self.assertEqual(pred[0], False)
         pred = learner.predict([{'sin': 12}])
         self.assertEqual(pred[0], True)
+        
+        # try it out with a response vector bigger
+        # than the training response, to see if internal
+        # transforms and inverse transforms are applied correctly
+        data = [self.data[i] for i in range(0, len(self.data)) if i % 2]
+        truth = [self.truth[i] for i in range(0, len(self.truth)) if i % 2]
+        learner.fit(data, truth)
+        pred = learner.predict(self.data)
+        self.assertEqual(len(pred), len(self.data))
+        self.assertEqual(pred[0], False)
+        self.assertEqual(pred[-1], True)
         return
 
     def test_predict_with_simulator(self):
@@ -117,7 +152,8 @@ class TestLearn(unittest.TestCase):
             transform=[
                 VariableSignalGenerator(),
                 WhiteNoise(clones=2),
-                SegmentSignal()
+                SegmentSignal(),
+                Flatten()
             ]
         )
         learner.fit(self.data, self.truth)
@@ -139,6 +175,7 @@ class TestExtensions(unittest.TestCase):
            [{'sin': i} for i in numpy.linspace(11, 15, 10)] + \
            [{'cos': i} for i in numpy.linspace(11, 15, 10)]
 
+    @nottest
     def test_scikit_validation(self):
         learner = Learner(
             transform=[

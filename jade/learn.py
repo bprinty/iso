@@ -17,7 +17,8 @@ from sklearn.svm import SVC
 from sklearn.externals import joblib
 from gems import composite
 
-from .transform import CompositeTransform
+from .transform import TransformChain, Flatten
+from .feature import FeatureTransform
 
 
 # model building
@@ -35,13 +36,11 @@ class Learner(BaseEstimator):
     """
     _X = None
     _Y = None
-    _Z = None
 
     def __init__(self, transform, model=SVC()):
         # use composite transform for everything, so that
         # simulation processors can be skipped during prediction
-        transform = CompositeTransform(transform)
-        self.vectorizer = transform
+        self.vectorizer = TransformChain(transform)
         self.model = model
         return
 
@@ -123,6 +122,15 @@ class Learner(BaseEstimator):
         )
         return
 
+    @property
+    def feature_names(self):
+        """
+        Return feature names if feature transform is part of vectorization.
+        """
+        if not isinstance(self.vectorizer.transforms[-1], FeatureTransform):
+            raise AssertionError('Last transformation must be feature transform to get feature names from learner.')
+        return self.vectorizer.transforms[-1].feature_names
+
     def flatten(self, X, Y):
         """
         "Flatten" input, changing dimensionality into
@@ -130,33 +138,20 @@ class Learner(BaseEstimator):
         this decreases the dimensionality of predictors and responses
         until the response vector is one-dimensional.
         """
-        fX, fY, fZ = [], [], []
-        if isinstance(Y, (list, tuple, numpy.ndarray)):
-            for idx in range(0, len(X)):
-                dat = self.flatten(X[idx], Y[idx])
-                fX.extend(dat[0])
-                fY.extend(dat[1])
-                fZ.append(len(X[idx]))
-        else:
-            return [X], [Y]
-        return numpy.array(fX), numpy.array(fY), fZ
+        self.shaper = TransformChain()
+        y = Y[0]
+        while isinstance(y, (list, tuple, numpy.ndarray)):
+            y = y[0]
+            self.shaper.add(Flatten())
+        return self.shaper.fit_transform(X, Y)
 
-    def inverse_flatten(self, X, Y, Z):
+    def inverse_flatten(self, X, Y):
         """
         "Inverse flatten" input, changing dimensionality back into
         space that can be back-transformed into something
         human-interpretable.
         """
-        fX, fY = [], []
-        if len(Z) < len(Y):
-            tY, tX = [], []
-            cidx = 0
-            for iz, z in enumerate(Z):
-                tX.append(X[cidx:(cidx + z)])
-                tY.append(Y[cidx:(cidx + z)])
-                cidx = cidx + z
-            X, Y = numpy.array(tX), numpy.array(tY)
-        return X, Y
+        return self.shaper.inverse_fit_transform(X, Y)
 
     def transform(self, X, Y=None):
         """
@@ -175,7 +170,7 @@ class Learner(BaseEstimator):
         Train learner for speicific data indices.
         """
         tX, tY = self.vectorizer.fit_transform(X, Y)
-        self._X, self._Y, self._Z = self.flatten(tX, tY)
+        self._X, self._Y = self.flatten(tX, tY)
         self.model.fit(self._X, self._Y)
         return self
 
@@ -188,9 +183,16 @@ class Learner(BaseEstimator):
         Fit models to data and return prediction.
         """
         self.fit(X, Y)
-        pY = self.model.predict(self._X)
-        fX, fY = self.inverse_flatten(self._X, pY, self._Z)
-        rX, rY = self.vectorizer.inverse_fit_transform(fX, fY)
+        if self.vectorizer.has_simulator:
+            # we don't want to make predictions on the simulated
+            # data, because it's only used to boost the training set
+            return self.predict(X)
+        else:
+            # if we can fully back-transform the data, there's
+            # no need to re-do the transformation process
+            pY = self.model.predict(self._X)
+            fX, fY = self.inverse_flatten(self._X, pY)
+            rX, rY = self.vectorizer.inverse_fit_transform(fX, fY)
         return rY
 
     def predict(self, X):
@@ -200,9 +202,9 @@ class Learner(BaseEstimator):
         if self._Y is None:
             raise AssertionError('Model has not been fit! Cannot make predictions for new data.')
         obj = self.vectorizer.clone()
-        tX, tY = obj.fit_transform(X, self._Y, pred=True)
-        fX, fY, fZ = self.flatten(tX, tY)
+        tX, tY = obj.fit_transform(X, None, pred=True)
+        fX, fY = self.flatten(tX, self.vectorizer[-1]._Y)
         pY = self.model.predict(fX)
-        fX, fY = self.inverse_flatten(fX, pY, fZ)
-        rX, rY = obj.inverse_fit_transform(fX, pY)
+        fX, fY = self.inverse_flatten(fX, pY)
+        rX, rY = obj.inverse_fit_transform(fX, fY)
         return rY

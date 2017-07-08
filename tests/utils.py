@@ -10,7 +10,9 @@
 # -------
 import numpy
 
-from jade import Transform, ComplexTransform, Simulator, ComplexSimulator, CompositeTransform
+from jade import Transform, ComplexTransform, TransformChain
+from jade import Simulator, ComplexSimulator
+from jade import Feature, FeatureTransform
 
 
 # transforms
@@ -21,13 +23,14 @@ class SignalGenerator(Transform):
         'cos': numpy.cos
     }
     
-    def __init__(self, period=1, samples=1000):
-        self.period = period
-        self.samples = samples
+    def __init__(self, f=1, fs=1000):
+        self.f = f
+        self.fs = fs
         return
 
     def transform(self, x, y=None):
-        tx = self.funcs[x](2 * numpy.pi * self.period * numpy.arange(self.samples) / self.samples)
+        t = numpy.arange(self.fs) / float(self.fs)
+        tx = self.funcs[x](2 * numpy.pi * self.f * t)
         return tx, y 
 
 
@@ -37,14 +40,15 @@ class VariableSignalGenerator(Transform):
         'cos': numpy.cos
     }
     
-    def __init__(self, samples=1000):
-        self.samples = samples
+    def __init__(self, fs=1000):
+        self.fs = fs
         return
 
     def transform(self, x, y=None):
         key = list(x.keys())[0]
-        freq = x[key]
-        tx = self.funcs[key](2 * numpy.pi * freq * numpy.arange(self.samples) / self.samples)
+        f = x[key]
+        t = numpy.arange(self.fs) / float(self.fs)
+        tx = self.funcs[key](2 * numpy.pi * f * t)
         return tx, y
 
 
@@ -65,7 +69,7 @@ class SegmentSignal(Transform):
         for idx, arr in enumerate(x):
             tx.extend(x[idx])
         if y is not None:
-            ty = numpy.median(y) == 1
+            ty = numpy.median(y) > 0
         return tx, ty
 
 
@@ -84,3 +88,24 @@ class WhiteNoise(Simulator):
             for i in range(0, self.clones)
         ]
         return tx, ty
+
+
+class NormalizedPower(Feature):
+    
+    def transform(self, x):
+        return numpy.sum(numpy.abs(x)) / numpy.size(x)
+
+
+class DominantFrequency(Feature):
+    
+    def __init__(self, fs=1000):
+        self.fs = fs
+        return
+    
+    def transform(self, x):
+        fx = numpy.fft.fft(x)
+        ft = numpy.fft.fftfreq(len(x), 1.0 / float(self.fs))
+        pfreq = ft[numpy.where(ft >= 0)]
+        pmag = abs(fx[numpy.where(ft >= 0)])
+        idx = numpy.argmax(pmag)
+        return pfreq[idx]

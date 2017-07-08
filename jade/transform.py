@@ -19,13 +19,14 @@ import logging
 from .jade import session
 
 
-# classes
-# -------
-class Transform(BaseEstimator, TransformerMixin):
+# transformation
+# --------------
+class Transform(TransformerMixin):
     """
     Data transform operator, transforming data from one space
     into another space for downstream processing.
     """
+    registered = True
     cache = False
     jobs = 1
     _X, _Y = None, None
@@ -172,6 +173,19 @@ class Transform(BaseEstimator, TransformerMixin):
         # else:
         #     results = joblib.Parallel(n_jobs=jobs)(joblib.delayed(_fit_vectorizer)(*arg) for arg in args)
 
+        # register
+        if not self.registered:
+            for ix, x in enumerate(X):
+                if self.registered:
+                    break
+                if Y is None:
+                    self.register(x)
+                else:
+                    self.register(x, Y[min(ix, len(Y) - 1)])
+
+        # parameterize
+        self.parameterize()
+
         # transform
         self._X = []
         self._Y = [] if Y is not None else Y
@@ -261,20 +275,12 @@ class Transform(BaseEstimator, TransformerMixin):
         Apply inverse transformation to a single element in target space.
 
         Args:
+            idx (int): Index of data in original data structure.
             x (object): Single target to apply transformation to.
             y (object): Single response to apply transformation to.
         """
         return x, y
 
-
-class ComplexTransform(BaseEstimator, TransformerMixin):
-    """
-    Complex data transform operator requiring two passes through the data - 
-    once for a "peek" at the landscape of the data, and another for
-    transforming the data into another space.
-    """
-    registered = False
-    
     def register(self, x, y=None):
         """
         Register a single element in target space.
@@ -291,49 +297,18 @@ class ComplexTransform(BaseEstimator, TransformerMixin):
         """
         return
 
-    def fit(self, X, Y=None):
-        # configure data
-        X = numpy.array(X)
-        Y = numpy.array(Y) if Y is not None else Y
-        
-        # load from cache (if specified)
-        if self.cache:
-            data = self.load(X, Y)
-            if data is not None:
-                self._X, self._Y = data
-                return
-        
-        # register
-        for ix, x in enumerate(X):
-            if self.registered:
-                break
-            if Y is None:
-                self.register(x)
-            else:
-                self.register(x, Y[min(ix, len(Y) - 1)])
 
-        # parameterize
-        self.parameterize()
-
-        # transform
-        self._X = []
-        self._Y = [] if Y is not None else Y
-        for ix, x in enumerate(X):
-            if Y is None:
-                tx, ty = self.transform(x)
-            else:
-                tx, ty = self.transform(x, Y[min(ix, len(Y) - 1)])
-                self.add_block('Y', ty)
-            self.add_block('X', tx)
-        self._X = numpy.array(self._X)
-        self._Y = numpy.array(self._Y) if Y is not None else Y
-        
-        # save to cache (if specified)
-        if self.cache:
-            self.save(X, Y)
-        return self
+class ComplexTransform(Transform):
+    """
+    Complex data transform operator requiring two passes through the data - 
+    once for a "peek" at the landscape of the data, and another for
+    transforming the data into another space.
+    """
+    registered = False
 
 
+# simulation
+# ----------
 class Simulator(Transform):
     """
     Transform for simulating new data for model building. These
@@ -370,59 +345,122 @@ class Simulator(Transform):
         return [x], [y]
 
 
-class ComplexSimulator(ComplexTransform):
+class ComplexSimulator(Simulator):
     """
     Transform for simulating new data for model building in a way
     that requires a peak at the data before data are simulated. These
     transformations don't change the dimensionality of data, they
     just 
     """
-    def add_block(self, dest, block):
-        if not isinstance(block, (list, tuple, numpy.ndarray)):
-            raise AssertionError('Error: Simulation transform methods must produce vector type!')
-        self.__dict__['_{}'.format(dest)].extend(block)
-        return
+    registered = False
+
+
+# flatteners
+# ----------
+class Flatten(Transform):
+    """
+    Transform for reducing dimensionality of input by specified
+    number of dimensions.
+    """
+
+    def fit(self, X, Y=None):
+        """
+        "Flatten" input, changing dimensionality into
+        something conducive to AI model development. In a nutshell,
+        this decreases the dimensionality of predictors and responses
+        until the response vector is one-dimensional.
+        """
+        fX, fY, fZ = [], [], []
+        for ix in range(0, len(X)):
+            
+            # if the response vector is flat
+            if Y is not None and not isinstance(Y[min(ix, len(Y) - 1)], (list, tuple, numpy.ndarray)):
+                self._X, self._Y, self._Z = X, Y, None
+                return self
+            
+            # the predictor vector is already flat
+            elif not isinstance(X[ix], (list, tuple, numpy.ndarray)):
+                self._X, self._Y, self._Z = X, Y, None
+                return self
+            
+            # otherwise, flatten
+            else:
+                fX.extend(X[ix])
+                fZ.append(len(X[ix]))
+                if Y is not None:
+                    fY.extend(Y[min(ix, len(Y) - 1)])
+        
+        # store the results
+        self._X = fX
+        self._Y = fY if Y is not None else Y
+        self._Z = fZ
+        return self
 
     def inverse_fit(self, X, Y=None):
         """
-        For simulation, no inverse transform is necessary, since
-        data already have the dimensionality they need.
-
-        Args:
-            X (numpy.array): Array with targets to apply transformation to.
-            Y (numpy.array): Array with responses to apply transformation to.
+        "Inverse flatten" input, changing dimensionality back into
+        space that can be back-transformed into something
+        human-interpretable.
         """
-        self._iX, self._iY = X, Y
+        if self._Z is None:
+            self._X, self._Y = X, Y
+            return self
+        cidx = 0
+        fX, fY = [], []
+        for z in self._Z:
+            fX.append(X[cidx:(cidx + z)])
+            if Y is not None:
+                fY.append(Y[cidx:(cidx + z)])
+            cidx += z
+        self._iX = fX
+        self._iY = fY if Y is not None else Y
         return self
-
-    def transform(self, x, y=None):
-        """
-        Apply transformation to a single element in target space.
-
-        Args:
-            x (object): Single target to apply transformation to.
-            y (object): Single response to apply transformation to.
-        """
-        return [x], [y]
-
 
 
 # vectorizers
 # -----------
-class CompositeTransform(Transform):
+class TransformChain(Transform):
     """
     Manager for all transpose layers.
     """
 
     def __init__(self, *args):
-        if len(args) == 0:
-            raise AssertionError('No transforms specified!')
-        if isinstance(args[0], (list, tuple)):
+        if len(args) != 0 and isinstance(args[0], (list, tuple)):
             args = args[0]
         self.transforms = []
         for arg in args:
             self.add(arg)
         return
+
+    def __getitem__(self, key):
+        """
+        Return transform with in chain. If the input is a slice,
+        return a new TransformChain with that slice of transforms.
+        """
+        if isinstance(key, slice):
+            return TransformChain(self.transforms[key])
+        return self.transforms[key]
+
+    def __iter__(self):
+        """
+        Generator for the object. Returns individual transforms during
+        each phase of iteration.
+        """
+        for xf in self.transforms:
+            yield xf
+        return
+
+    @property
+    def has_simulator(self):
+        """
+        Return boolean describing whether or not chain has simulator.
+        This is used in learner objects to predict on data without
+        simulation for fit_predict methods.
+        """
+        for xf in self.transforms:
+            if isinstance(xf, Simulator):
+                return True
+        return False
 
     def clone(self):
         """
@@ -487,11 +525,15 @@ class CompositeTransform(Transform):
 
     def inverse_fit(self, X, Y=None):
         """
+        Inverse fit and transform targets back into input space.
 
+        Args:
+            X (numpy.array): Array with targets to apply transformation to.
+            Y (numpy.array): Array with responses to apply transformation to.
         """
-        # inverse fit individual transforms
+        # inverse fit reversed individual transforms
         tx, ty = X, Y
-        for xf in self.transforms:
+        for xf in self.transforms[::-1]:
             tx, ty = xf.inverse_fit_transform(tx, ty)
         self._iX, self._iY = tx, ty
         return self
