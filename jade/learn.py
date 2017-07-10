@@ -37,39 +37,41 @@ class Learner(BaseEstimator):
     _X = None
     _Y = None
 
-    def __init__(self, transform, model=SVC()):
+    def __init__(self, transform, model=SVC(), shaper=None):
         # use composite transform for everything, so that
         # simulation processors can be skipped during prediction
-        self.vectorizer = TransformChain(transform)
+        if isinstance(transform, TransformChain):
+            self.vectorizer = transform
+        else:
+            self.vectorizer = TransformChain(transform)
+        self.shaper = shaper
         self.model = model
         return
 
-    def __copy__(self, kwargs):
-        print self.vectorizer.clone().transforms
-        return self.__class__(
-            transform=self.vectorizer.clone().transforms,
-            model=clone(self.model)
+    def __repr__(self):
+        return '{}(\n\ttransform={},\n\tmodel={},\n\tshaper={})'.format(
+            self.__class__.__name__,
+            repr(self.vectorizer),
+            repr(self.model),
+            repr(self.shaper)
         )
 
-    def __deepcopy__(self, kwargs):
-        return self.__copy__(kwargs)
+    def __copy__(self):
+        return self.__class__(
+            transform=self.vectorizer.clone(),
+            model=clone(self.model),
+            shaper=self.shaper.clone()
+        )
 
-    # def get_params(self, deep=True):
-    #     return {
-    #         'transform': self.vectorizer.clone().transforms,
-    #         'model': clone(self.model)
-    #     }
-
-    # def set_params(self, **kwargs):
-    #     print kwargs
-    #     return self.__class__(**kwargs)
+    def __deepcopy__(self):
+        return self.__copy__()
 
     @classmethod
     def from_config(cls, filename):
         """
         TODO: THIS
         """
-        return
+        raise NotImplementedError('Loading from config file not currently supported!')
 
     @classmethod
     def load(cls, filename):
@@ -83,10 +85,10 @@ class Learner(BaseEstimator):
         global session
         # try loading file directly
         if os.path.exists(filename):
-            try:
-                return joblib.load(filename)
-            except:
+            if filename[-4:] == '.yml' or filename[-5:] == '.yaml':
                 return cls.from_config(filename)
+            else:
+                return joblib.load(filename)
         
         # try loading pickle from models directory
         elif os.path.exists(os.path.join(session.models, filename + '.pkl')):
@@ -117,7 +119,8 @@ class Learner(BaseEstimator):
         joblib.dump(
             self.__class__(
                 transform=self.vectorizer.clone(),
-                model=self.model
+                model=self.model,
+                shaper=self.shaper.clone()
             ), filename
         )
         return
@@ -131,21 +134,24 @@ class Learner(BaseEstimator):
             raise AssertionError('Last transformation must be feature transform to get feature names from learner.')
         return self.vectorizer.transforms[-1].feature_names
 
-    def flatten(self, X, Y):
+    def flatten(self, X, Y=None):
         """
         "Flatten" input, changing dimensionality into
         something conducive to AI model development. In a nutshell,
         this decreases the dimensionality of predictors and responses
         until the response vector is one-dimensional.
         """
-        self.shaper = TransformChain()
-        y = Y[0]
-        while isinstance(y, (list, tuple, numpy.ndarray)):
-            y = y[0]
-            self.shaper.add(Flatten())
+        if self.shaper is None:
+            if Y is None:
+                raise AssertionError('Model has not been previously fit! No rules for transforming data into machine-ready format.')
+            self.shaper = TransformChain()
+            y = Y[0]
+            while isinstance(y, (list, tuple, numpy.ndarray)):
+                y = y[0]
+                self.shaper.add(Flatten())
         return self.shaper.fit_transform(X, Y)
 
-    def inverse_flatten(self, X, Y):
+    def inverse_flatten(self, X, Y=None):
         """
         "Inverse flatten" input, changing dimensionality back into
         space that can be back-transformed into something
@@ -158,12 +164,15 @@ class Learner(BaseEstimator):
         Transform input data into ai-ready tensor.
         """
         obj = self.vectorizer.clone()
-        X, Y = obj.fit_transform(X, Y)
+        X, Y = obj.fit_transform(X, Y, pred=True)
         return X, Y
 
     def score(self, X, Y=None, sample_weight=None):
-        X, Y = self.transform(X, Y)
-        return self.model.score(X, Y=Y, sample_weight=sample_weight)
+        """
+        Apply model scoring function on transformed data.
+        """
+        tX, tY = self.transform(X, Y)
+        return self.model.score(tX, y=tY, sample_weight=sample_weight)
 
     def fit(self, X, Y):
         """
@@ -199,11 +208,9 @@ class Learner(BaseEstimator):
         """
         Predict results from new data.
         """
-        if self._Y is None:
-            raise AssertionError('Model has not been fit! Cannot make predictions for new data.')
         obj = self.vectorizer.clone()
         tX, tY = obj.fit_transform(X, None, pred=True)
-        fX, fY = self.flatten(tX, self.vectorizer[-1]._Y)
+        fX, fY = self.flatten(tX, self.vectorizer[-1]._Y if self.shaper is None else None)
         pY = self.model.predict(fX)
         fX, fY = self.inverse_flatten(fX, pY)
         rX, rY = obj.inverse_fit_transform(fX, fY)

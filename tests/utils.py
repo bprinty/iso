@@ -64,13 +64,10 @@ class SegmentSignal(Transform):
             y = numpy.array([y] * len(tx))
         return tx, y
 
-    def inverse_transform(self, x, y=None):
-        tx, ty = [], None
-        for idx, arr in enumerate(x):
-            tx.extend(x[idx])
+    def inverse_transform(self, w, x, y=None):
         if y is not None:
-            ty = numpy.median(y) > 0
-        return tx, ty
+            y = numpy.median(y) > 0
+        return w, y
 
 
 class WhiteNoise(Simulator):

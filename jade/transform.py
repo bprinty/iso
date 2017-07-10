@@ -12,7 +12,7 @@ import os
 import numpy
 import joblib
 from sklearn.base import BaseEstimator, TransformerMixin
-from copy import deepcopy
+from copy import copy, deepcopy
 import hashlib
 import logging
 
@@ -32,13 +32,16 @@ class Transform(TransformerMixin):
     _X, _Y = None, None
     _iX, _iY = None, None
 
+    def __repr__(self):
+        return '{}()'.format(self.__class__.__name__)
+
     def clone(self):
         """
         Produce "copy" of transform that can be used fit data
         outside of the current context.
         """
-        ret = deepcopy(self)
-        ret._X, ret._Y = None, None
+        ret = copy(self)
+        ret._X, ret._Y, ret._W = None, None, None
         ret._iX, ret._iY = None, None
         return ret
 
@@ -201,6 +204,7 @@ class Transform(TransformerMixin):
                 self.add_block('Y', ty)
             self.add_block('X', tx)
         self._X = numpy.array(self._X)
+        self._W = X
         self._Y = numpy.array(self._Y) if Y is not None else Y
         
         # assert that predictor and response have
@@ -240,9 +244,9 @@ class Transform(TransformerMixin):
         self._iY = [] if Y is not None else Y
         for ix, x in enumerate(X):
             if Y is None:
-                tx, ty = self.inverse_transform(x)
+                tx, ty = self.inverse_transform(self._W[min(ix, len(self._W) - 1)], x)
             else:
-                tx, ty = self.inverse_transform(x, Y[min(ix, len(Y) - 1)])
+                tx, ty = self.inverse_transform(self._W[min(ix, len(self._W) - 1)], x, Y[min(ix, len(Y) - 1)])
                 self.add_block('iY', ty)
             self.add_block('iX', tx)
         self._iX = numpy.array(self._iX)
@@ -270,7 +274,7 @@ class Transform(TransformerMixin):
         """
         return x, y
 
-    def inverse_transform(self, x, y=None):
+    def inverse_transform(self, w, x, y=None):
         """
         Apply inverse transformation to a single element in target space.
 
@@ -279,7 +283,7 @@ class Transform(TransformerMixin):
             x (object): Single target to apply transformation to.
             y (object): Single response to apply transformation to.
         """
-        return x, y
+        return w, y
 
     def register(self, x, y=None):
         """
@@ -432,6 +436,9 @@ class TransformChain(Transform):
             self.add(arg)
         return
 
+    def __repr__(self):
+        return '{}(\n\t{})'.format(self.__class__.__name__, ',\n\t'.join(map(repr, self.transforms)))
+
     def __getitem__(self, key):
         """
         Return transform with in chain. If the input is a slice,
@@ -503,6 +510,7 @@ class TransformChain(Transform):
             if not (pred and isinstance(xf, (Simulator, ComplexSimulator))):
                 tx, ty = xf.fit_transform(tx, ty)
         self._X, self._Y = tx, ty
+        self._W = X
 
         # save to cache (if specified)
         if self.cache:
@@ -523,17 +531,20 @@ class TransformChain(Transform):
         self.fit(X, Y, pred=pred)
         return self._X, self._Y
 
-    def inverse_fit(self, X, Y=None):
+    def inverse_fit(self, X, Y=None, Z=None):
         """
         Inverse fit and transform targets back into input space.
 
         Args:
             X (numpy.array): Array with targets to apply transformation to.
             Y (numpy.array): Array with responses to apply transformation to.
+            Z (numpy.array): Array with original targets transformation was applied to.
+                These are often useful for back-transforming responses into the
+                space they were originally supplied in.
         """
         # inverse fit reversed individual transforms
         tx, ty = X, Y
-        for xf in self.transforms[::-1]:
+        for idx, xf in enumerate(self.transforms[::-1]):
             tx, ty = xf.inverse_fit_transform(tx, ty)
         self._iX, self._iY = tx, ty
         return self
