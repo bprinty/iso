@@ -32,6 +32,19 @@ class Transform(TransformerMixin):
     _X, _Y = None, None
     _iX, _iY = None, None
 
+    def __add__(self, other):
+        if isinstance(self, TransformChain):
+            xf = self.clone().transforms
+        else:
+            xf = [self.clone()]
+        if isinstance(other, TransformChain):
+            return TransformChain(xf + other.clone().transforms)
+        elif isinstance(other, Transform):
+            return TransformChain(xf + [other.clone()])
+        else:
+            raise AssertionError('No rule for adding type {} and {}'.format(str(type(self)), str(type(other))))
+        return
+
     def __repr__(self):
         return '{}()'.format(self.__class__.__name__)
 
