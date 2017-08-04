@@ -9,7 +9,7 @@ __version__ = '0.0.1'
 
 # imports
 # -------
-from .jade import options
+from .jade import options, session
 
 from .feature import Feature
 from .feature import ComplexFeature
@@ -25,26 +25,3 @@ from .transform import Simulator
 from .transform import ComplexSimulator
 
 from .learn import Learner
-
-
-# [
-#     [1, 2, 3, ..., 1000],
-#     [1, 2, 3, ..., 1000],
-# ]
-
-# [
-#     [
-#         [1, 2, 3]
-#         [4, 5, 6]
-#     ]
-#     [
-#         [1, 2, 3]
-#         [4, 5, 6]
-#     ]
-# ]
-# [
-#     [1, 2, 3],
-#     [4, 5, 6],
-#     [1, 2, 3],
-#     [4, 5, 6]
-# ]

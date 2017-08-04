@@ -19,6 +19,7 @@ from gems import composite
 
 from .transform import TransformChain, Flatten
 from .feature import FeatureTransform
+from .jade import session
 
 
 # model building
@@ -37,7 +38,7 @@ class Learner(BaseEstimator):
     _X = None
     _Y = None
 
-    def __init__(self, transform, model=SVC(), shaper=None):
+    def __init__(self, transform, model=SVC(), shaper=None, filename=None):
         # use composite transform for everything, so that
         # simulation processors can be skipped during prediction
         if isinstance(transform, TransformChain):
@@ -46,6 +47,7 @@ class Learner(BaseEstimator):
             self.vectorizer = TransformChain(transform)
         self.shaper = shaper
         self.model = model
+        self.filename = filename
         return
 
     def __repr__(self):
@@ -102,7 +104,7 @@ class Learner(BaseEstimator):
             raise AssertionError('Cannot load model. Pickle file does not exist!')
         return
 
-    def save(self, filename, archive=False):
+    def save(self, filename=None, archive=False):
         """
         Save learner model to file.
 
@@ -113,6 +115,10 @@ class Learner(BaseEstimator):
                 using filename as the name of the model. This should be used
                 only during model development.
         """
+        if self.filename is not None and filename is None:
+            filename = self.filename
+        if filename is None:
+            raise AssertionError('filename argument must be specified to save model.')
         if archive:
             filename = os.path.basename(filename)
             filename = os.path.join(session.models, filename + '.pkl')
@@ -178,6 +184,7 @@ class Learner(BaseEstimator):
         """
         Train learner for speicific data indices.
         """
+        self.shaper = None
         tX, tY = self.vectorizer.fit_transform(X, Y)
         self._X, self._Y = self.flatten(tX, tY)
         self.model.fit(self._X, self._Y)
