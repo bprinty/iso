@@ -122,6 +122,8 @@ class Learner(BaseEstimator):
         if archive:
             filename = os.path.basename(filename)
             filename = os.path.join(session.models, filename + '.pkl')
+        if not os.path.exists(os.path.dirname(filename)):
+            os.makedirs(os.path.dirname(filename))
         joblib.dump(
             self.__class__(
                 transform=self.vectorizer.clone(),
@@ -148,13 +150,12 @@ class Learner(BaseEstimator):
         until the response vector is one-dimensional.
         """
         if self.shaper is None:
-            if Y is None:
-                raise AssertionError('Model has not been previously fit! No rules for transforming data into machine-ready format.')
             self.shaper = TransformChain()
-            y = Y[0]
-            while isinstance(y, (list, tuple, numpy.ndarray)):
-                y = y[0]
-                self.shaper.add(Flatten())
+            if Y is not None:
+                y = Y[0]
+                while isinstance(y, (list, tuple, numpy.ndarray)):
+                    y = y[0]
+                    self.shaper.add(Flatten())
         return self.shaper.fit_transform(X, Y)
 
     def inverse_flatten(self, X, Y=None):
