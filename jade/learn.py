@@ -174,12 +174,12 @@ class Learner(BaseEstimator):
         X, Y = obj.fit_transform(X, Y, pred=True)
         return X, Y
 
-    def score(self, X, Y=None, sample_weight=None):
+    def score(self, X, Y=None):
         """
         Apply model scoring function on transformed data.
         """
         tX, tY = self.transform(X, Y)
-        return self.model.score(tX, y=tY, sample_weight=sample_weight)
+        return self.model.score(tX, y=tY)
 
     def fit(self, X, Y):
         """

@@ -98,3 +98,6 @@ class IdentityModel(BaseEstimator):
 
     def predict(self, X):
         return [True] * len(X)
+
+    def score(self, X, y, metric=metrics.accuracy_score):
+        return metric(self.predict(X), y)
