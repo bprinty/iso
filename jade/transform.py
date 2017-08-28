@@ -374,10 +374,12 @@ class ComplexSimulator(Simulator):
 
 # flatteners
 # ----------
-class Flatten(Transform):
+class Reduce(Transform):
     """
     Transform for reducing dimensionality of input by specified
-    number of dimensions.
+    number of dimensions. This used to be called "Flatten", but was
+    changed to "Reduce" to be compatible with keras layers without
+    collision.
     """
 
     def fit(self, X, Y=None):

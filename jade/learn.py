@@ -17,7 +17,7 @@ from sklearn.svm import SVC
 from sklearn.externals import joblib
 from gems import composite
 
-from .transform import TransformChain, Flatten
+from .transform import TransformChain, Reduce
 from .feature import FeatureTransform
 from .jade import session
 
@@ -155,7 +155,7 @@ class Learner(BaseEstimator):
                 y = Y[0]
                 while isinstance(y, (list, tuple, numpy.ndarray)):
                     y = y[0]
-                    self.shaper.add(Flatten())
+                    self.shaper.add(Reduce())
         return self.shaper.fit_transform(X, Y)
 
     def inverse_flatten(self, X, Y=None):

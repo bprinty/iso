@@ -15,7 +15,7 @@ from sklearn.model_selection import cross_val_score
 import pandas
 from nose.tools import nottest
 
-from jade import Learner, Flatten, FeatureTransform
+from jade import Learner, Reduce, FeatureTransform
 from . import __base__, __resources__, tmpfile
 from .utils import VariableSignalGenerator, SegmentSignal, WhiteNoise
 from .utils import NormalizedPower, DominantFrequency
@@ -52,7 +52,7 @@ class TestLearn(unittest.TestCase):
             transform=[
                 VariableSignalGenerator(fs=1000),
                 SegmentSignal(chunksize=200),
-                Flatten(),
+                Reduce(),
                 FeatureTransform(
                     NormalizedPower(),
                     DominantFrequency(fs=1000)
@@ -153,7 +153,7 @@ class TestLearn(unittest.TestCase):
                 VariableSignalGenerator(),
                 WhiteNoise(clones=2),
                 SegmentSignal(),
-                Flatten()
+                Reduce()
             ]
         )
         learner.fit(self.data, self.truth)

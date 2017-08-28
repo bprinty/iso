@@ -12,7 +12,7 @@ import os
 import unittest
 import numpy
 
-from jade import Transform, ComplexTransform, TransformChain, Flatten
+from jade import Transform, ComplexTransform, TransformChain, Reduce
 from . import __base__, __resources__, tmpfile
 from .utils import SignalGenerator
 from .utils import VariableSignalGenerator
@@ -92,12 +92,12 @@ class TestComplexTransform(unittest.TestCase):
         return
 
 
-class TestFlatten(unittest.TestCase):
+class TestReduce(unittest.TestCase):
 
     def test_already_flat(self):
         gen = TransformChain(
             VariableSignalGenerator(fs=10000),
-            Flatten()
+            Reduce()
         )
         X, Y = gen.fit_transform([{'sin': 100}, {'cos': 150}], [0, 1])
         self.assertEqual(len(X), 2)
@@ -120,7 +120,7 @@ class TestFlatten(unittest.TestCase):
         self.assertEqual(len(X[0][0]), 200)
 
         # add flattening layer
-        gen.add(Flatten())
+        gen.add(Reduce())
         X, Y = gen.fit_transform([{'sin': 100}, {'cos': 150}], [0, 1])
         self.assertEqual(len(X), len(Y))
         self.assertEqual(len(X), 300)
@@ -137,7 +137,7 @@ class TestFlatten(unittest.TestCase):
         
         # flattening transform
         fgen = ogen.clone()
-        fgen.add(Flatten())
+        fgen.add(Reduce())
         
         # transform/inverse-transform
         fX, fY = fgen.fit_transform([{'sin': 100}, {'cos': 150}], [0, 1])

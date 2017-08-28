@@ -19,7 +19,7 @@ from .transform import Transform
 from .transform import ComplexTransform
 from .transform import TransformChain
 
-from .transform import Flatten
+from .transform import Reduce
 
 from .transform import Simulator
 from .transform import ComplexSimulator

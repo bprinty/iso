@@ -13,7 +13,7 @@ import unittest
 import numpy
 from sklearn.svm import SVC
 
-from jade import Transform, ComplexTransform, TransformChain, Flatten
+from jade import Transform, ComplexTransform, TransformChain, Reduce
 from jade import FeatureTransform
 from . import __base__, __resources__, tmpfile
 from .utils import SignalGenerator
@@ -40,7 +40,7 @@ class TestFeatureTransform(unittest.TestCase):
             VariableSignalGenerator(fs=10000),
             WhiteNoise(sigma=0.1, clones=2),
             SegmentSignal(chunksize=200),
-            Flatten()
+            Reduce()
         )
         X, Y = generator.fit_transform([{'sin': 100}, {'cos': 150}])
         xform = FeatureTransform(
