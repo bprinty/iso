@@ -410,9 +410,9 @@ class Reduce(Transform):
                     fY.extend(Y[min(ix, len(Y) - 1)])
         
         # store the results
-        self._X = fX
-        self._Y = fY if Y is not None else Y
-        self._Z = fZ
+        self._X = numpy.array(fX)
+        self._Y = numpy.array(fY) if Y is not None else Y
+        self._Z = numpy.array(fZ)
         return self
 
     def inverse_fit(self, X, Y=None):
@@ -431,8 +431,8 @@ class Reduce(Transform):
             if Y is not None:
                 fY.append(Y[cidx:(cidx + z)])
             cidx += z
-        self._iX = fX
-        self._iY = fY if Y is not None else Y
+        self._iX = numpy.array(fX)
+        self._iY = numpy.array(fY) if Y is not None else Y
         return self
 
 

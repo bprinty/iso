@@ -13,7 +13,8 @@ import unittest
 import numpy
 from sklearn.model_selection import cross_val_score
 import pandas
-from nose.tools import nottest
+import pytest
+import random
 
 from jade import Learner, Reduce, FeatureTransform
 from . import __base__, __resources__, tmpfile
@@ -23,7 +24,7 @@ from .utils import NormalizedPower, DominantFrequency
 
 # tests
 # -----
-class TestLearn(unittest.TestCase):
+class TestLearner(unittest.TestCase):
     # generate data:
     # here we're tyring to predict whether or not a
     # signal is above a periodicity of 5
@@ -165,6 +166,81 @@ class TestLearn(unittest.TestCase):
         self.assertEqual(len(pred), 2)
         return
 
+    def test_save(self):
+        from sklearn.svm import SVC
+        learner = Learner(
+            transform=[
+                VariableSignalGenerator(),
+                WhiteNoise(clones=2),
+                SegmentSignal(),
+                Reduce()
+            ], model=SVC(kernel='rbf')
+        )
+        learner.fit(self.data, self.truth)
+        test = list(self.data)
+        random.shuffle(test)
+        pred = learner.predict(test)
+        tmp = tmpfile('.pkl')
+        learner.save(tmp)
+        del learner
+        learner = Learner.load(tmp)
+        self.assertEqual(list(learner.predict(test)), list(pred))
+        return
+
+    def test_keras_save(self):
+        from keras.models import Sequential
+        from keras.models import Sequential
+        from keras.layers import Dense, Dropout, Flatten, Reshape
+        from keras.layers import Conv1D, Conv2D, MaxPooling2D, MaxPooling1D
+        from keras.wrappers.scikit_learn import KerasClassifier
+        cnn = Sequential([
+            Reshape((1, 100, 1), input_shape=(100,)),
+            Conv2D(64, (3, 1), padding="same", activation="relu"),
+            MaxPooling2D(pool_size=(1, 2)),
+            Flatten(),
+            Dense(128, activation="relu"),
+            Dropout(0.2),
+            Dense(1, activation='sigmoid'),
+        ])
+        cnn.compile(
+            loss='binary_crossentropy',
+            optimizer='adam',
+            metrics=['accuracy'],
+        )
+        learner = Learner(
+            transform=[
+                VariableSignalGenerator(),
+                WhiteNoise(clones=2),
+                SegmentSignal(),
+                Reduce()
+            ], model=cnn
+        )
+
+        # # under the hood, convert all keras objects to KerasClassifier
+        # # do the following below to load the model from a configuration
+        # # file
+        # cls = model.classes_
+        # ncls = model.n_classes_
+        # def build():
+        #     x = Sequential.from_config(cfg)
+        #     x.set_weights(wts)
+        #     return x
+        # model = KerasClassifier(build_fn=build)
+        # model.classes_ = cls
+        # model.n_classes_ = ncls
+        # model.model = build()
+
+        # learner.fit(self.data, self.truth)
+        # test = list(self.data)
+        # random.shuffle(test)
+        # tmp = tmpfile('.pkl')
+        # learner.save(tmp)
+        # del learner
+        # learner = Learner.load(tmp)
+        # self.assertEqual(list(learner.predict(test)), list(pred))
+        return
+
+
 class TestExtensions(unittest.TestCase):
     # gnerate data:
     # here we're tyring to predict whether or not a
@@ -175,7 +251,7 @@ class TestExtensions(unittest.TestCase):
            [{'sin': i} for i in numpy.linspace(11, 15, 10)] + \
            [{'cos': i} for i in numpy.linspace(11, 15, 10)]
 
-    @nottest
+    @pytest.mark.skip(reason="feature currently in development")
     def test_scikit_validation(self):
         learner = Learner(
             transform=[
