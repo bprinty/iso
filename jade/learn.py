@@ -124,6 +124,14 @@ class Learner(BaseEstimator):
             filename = os.path.join(session.models, filename + '.pkl')
         if not os.path.exists(os.path.dirname(filename)):
             os.makedirs(os.path.dirname(filename))
+        # keras = 'keras.models' in str(type(self.model))
+        # if keras:
+        #     model = {
+        #         'config': self.model.get_config(),
+        #         'weights': self.model.get_weights()
+        #     }
+        # else:
+        #     model = self.model
         joblib.dump(
             self.__class__(
                 transform=self.vectorizer.clone(),
