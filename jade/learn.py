@@ -12,10 +12,12 @@ import os
 import re
 import numpy
 import warnings
+import logging
 from sklearn.base import BaseEstimator, clone
 from sklearn.svm import SVC
 from sklearn.externals import joblib
 from gems import composite
+from cached_property import cached_property
 
 from .transform import TransformChain, Reduce
 from .feature import FeatureTransform
@@ -46,8 +48,19 @@ class Learner(BaseEstimator):
         else:
             self.vectorizer = TransformChain(transform)
         self.shaper = shaper
-        self.model = model
         self.filename = filename
+
+        # handle non-compatible keras format
+        if 'keras.models.Sequential' in str(type(model)):
+            raise AssertionError('Please use KerasClassifier or KerasRegressor object with jade Learner! See https://keras.io/scikit-learn-api/ for more info.')
+
+        # save into non-parsed property (run generator if available)
+        # self._model is used here so that different types of models from
+        # different libraries can be resolved properly
+        if callable(model):
+            self._model = model()
+        else:
+            self._model = model
         return
 
     def __repr__(self):
@@ -124,22 +137,57 @@ class Learner(BaseEstimator):
             filename = os.path.join(session.models, filename + '.pkl')
         if not os.path.exists(os.path.dirname(filename)):
             os.makedirs(os.path.dirname(filename))
-        # keras = 'keras.models' in str(type(self.model))
-        # if keras:
-        #     model = {
-        #         'config': self.model.get_config(),
-        #         'weights': self.model.get_weights()
-        #     }
-        # else:
-        #     model = self.model
+        if 'Keras' in str(type(self.model)):
+            model = {
+                'config': self.model.model.get_config(),
+                'weights': self.model.model.get_weights(),
+                'type': self.model.__class__.__name__
+            }
+            if model['type'] == 'KerasClassifier':
+                model['classes'] = self.model.classes_
+                model['n_classes'] = self.model.n_classes_
+        else:
+            model = self.model
         joblib.dump(
             self.__class__(
                 transform=self.vectorizer.clone(),
-                model=self.model,
+                model=model,
                 shaper=self.shaper.clone()
             ), filename
         )
         return
+
+    @cached_property
+    def model(self):
+        """
+        Model component of Learner object, implemented as cached_property
+        so that model persisitance can be achieved with all of the
+        different types of models from different libraries.
+        """
+        # scikit-learn model definition
+        if isinstance(self._model, BaseEstimator):
+            model = self._model
+        
+        # keras classifier object
+        elif 'KerasClassifier' in str(type(self._model)):
+            model = self._model
+        
+        # keras model definition
+        elif isinstance(self._model, dict) and 'config' in self._model:
+            from keras.models import Sequential
+            from keras.wrappers import scikit_learn
+            cl = getattr(scikit_learn, self._model['type'])(lambda: 1)
+            cl.model = Sequential.from_config(self._model['config'])
+            cl.model.set_weights(self._model['weights'])
+            if self._model['type'] == 'KerasClassifier':
+                cl.classes_ = self._model['classes']
+                cl.n_classes_ = self._model['n_classes']
+            model = cl
+
+        # pickle object
+        elif isinstance(self._model, basestring):
+            model = joblib.load(self._model)
+        return model
 
     @property
     def feature_names(self):
@@ -182,52 +230,52 @@ class Learner(BaseEstimator):
         X, Y = obj.fit_transform(X, Y, pred=True)
         return X, Y
 
-    def score(self, X, Y=None):
+    def score(self, X, Y, **kwargs):
         """
         Apply model scoring function on transformed data.
         """
         tX, tY = self.transform(X, Y)
-        return self.model.score(tX, y=tY)
+        return self.model.score(tX, tY, **kwargs)
 
-    def fit(self, X, Y):
+    def fit(self, X, Y, **kwargs):
         """
         Train learner for speicific data indices.
         """
         self.shaper = None
         tX, tY = self.vectorizer.fit_transform(X, Y)
         self._X, self._Y = self.flatten(tX, tY)
-        self.model.fit(self._X, self._Y)
+        self.model.fit(self._X, self._Y, **kwargs)
         return self
 
-    def fit_transform(self, X, Y):
-        self.fit(X, Y)
+    def fit_transform(self, X, Y, **kwargs):
+        self.fit(X, Y, **kwargs)
         return self._X, self._Y
 
-    def fit_predict(self, X, Y):
+    def fit_predict(self, X, Y, **kwargs):
         """
         Fit models to data and return prediction.
         """
-        self.fit(X, Y)
+        self.fit(X, Y, **kwargs)
         if self.vectorizer.has_simulator:
             # we don't want to make predictions on the simulated
             # data, because it's only used to boost the training set
-            return self.predict(X)
+            return self.predict(X, **kwargs)
         else:
             # if we can fully back-transform the data, there's
             # no need to re-do the transformation process
-            pY = self.model.predict(self._X)
+            pY = self.model.predict(self._X, **kwargs)
             fX, fY = self.inverse_flatten(self._X, pY)
             rX, rY = self.vectorizer.inverse_fit_transform(fX, fY)
         return rY
 
-    def predict(self, X):
+    def predict(self, X, **kwargs):
         """
         Predict results from new data.
         """
         obj = self.vectorizer.clone()
         tX, tY = obj.fit_transform(X, None, pred=True)
         fX, fY = self.flatten(tX, self.vectorizer[-1]._Y if self.shaper is None else None)
-        pY = self.model.predict(fX)
+        pY = self.model.predict(fX, **kwargs)
         fX, fY = self.inverse_flatten(fX, pY)
         rX, rY = obj.inverse_fit_transform(fX, fY)
         return rY

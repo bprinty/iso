@@ -22,6 +22,11 @@ from .utils import VariableSignalGenerator, SegmentSignal, WhiteNoise
 from .utils import NormalizedPower, DominantFrequency
 
 
+# config
+# ------
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+
+
 # tests
 # -----
 class TestLearner(unittest.TestCase):
@@ -166,6 +171,17 @@ class TestLearner(unittest.TestCase):
         self.assertEqual(len(pred), 2)
         return
 
+
+class TestModelPersistence(unittest.TestCase):
+    # generate data:
+    # here we're tyring to predict whether or not a
+    # signal is above a periodicity of 5
+    truth = [False] * 20 + [True] * 20
+    data = [{'sin': i} for i in numpy.linspace(5, 10, 10)] + \
+           [{'cos': i} for i in numpy.linspace(5, 10, 10)] + \
+           [{'sin': i} for i in numpy.linspace(11, 15, 10)] + \
+           [{'cos': i} for i in numpy.linspace(11, 15, 10)]
+
     def test_save(self):
         from sklearn.svm import SVC
         learner = Learner(
@@ -189,55 +205,42 @@ class TestLearner(unittest.TestCase):
 
     def test_keras_save(self):
         from keras.models import Sequential
-        from keras.models import Sequential
         from keras.layers import Dense, Dropout, Flatten, Reshape
         from keras.layers import Conv1D, Conv2D, MaxPooling2D, MaxPooling1D
         from keras.wrappers.scikit_learn import KerasClassifier
-        cnn = Sequential([
-            Reshape((1, 100, 1), input_shape=(100,)),
-            Conv2D(64, (3, 1), padding="same", activation="relu"),
-            MaxPooling2D(pool_size=(1, 2)),
-            Flatten(),
-            Dense(128, activation="relu"),
-            Dropout(0.2),
-            Dense(1, activation='sigmoid'),
-        ])
-        cnn.compile(
-            loss='binary_crossentropy',
-            optimizer='adam',
-            metrics=['accuracy'],
-        )
+        def build():
+            cnn = Sequential([
+                Reshape((1, 100, 1), input_shape=(100,)),
+                Conv2D(64, (3, 1), padding="same", activation="relu"),
+                MaxPooling2D(pool_size=(1, 2)),
+                Flatten(),
+                Dense(128, activation="relu"),
+                Dropout(0.2),
+                Dense(1, activation='sigmoid'),
+            ])
+            cnn.compile(
+                loss='binary_crossentropy',
+                optimizer='adam',
+                metrics=['accuracy']
+            )
+            return cnn
         learner = Learner(
             transform=[
                 VariableSignalGenerator(),
                 WhiteNoise(clones=2),
                 SegmentSignal(),
                 Reduce()
-            ], model=cnn
+            ], model=KerasClassifier(build)
         )
-
-        # # under the hood, convert all keras objects to KerasClassifier
-        # # do the following below to load the model from a configuration
-        # # file
-        # cls = model.classes_
-        # ncls = model.n_classes_
-        # def build():
-        #     x = Sequential.from_config(cfg)
-        #     x.set_weights(wts)
-        #     return x
-        # model = KerasClassifier(build_fn=build)
-        # model.classes_ = cls
-        # model.n_classes_ = ncls
-        # model.model = build()
-
-        # learner.fit(self.data, self.truth)
-        # test = list(self.data)
-        # random.shuffle(test)
-        # tmp = tmpfile('.pkl')
-        # learner.save(tmp)
-        # del learner
-        # learner = Learner.load(tmp)
-        # self.assertEqual(list(learner.predict(test)), list(pred))
+        learner.fit(self.data, self.truth, verbose=0)
+        test = list(self.data)
+        random.shuffle(test)
+        pred = learner.predict(test, verbose=0)
+        tmp = tmpfile('.pkl')
+        learner.save(tmp)
+        del learner
+        learner = Learner.load(tmp)
+        self.assertEqual(list(learner.predict(test, verbose=0)), list(pred))
         return
 
 
