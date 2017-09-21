@@ -44,7 +44,7 @@ setup(
     author_email='bprinty@gmail.com',
     url='https://github.com/bprinty/jade.git',
     packages=['jade'],
-    package_data={},
+    package_data={'jade': 'jade'},
     entry_points={
         'console_scripts': [
             'jade = jade.__main__:main'
