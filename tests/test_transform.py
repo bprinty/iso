@@ -12,7 +12,7 @@ import os
 import unittest
 import numpy
 
-from jade import Transform, ComplexTransform, TransformChain, Reduce
+from jade import Transform, ComplexTransform, TransformChain, SimulatorGroup, Reduce
 from . import __base__, __resources__, tmpfile
 from .utils import SignalGenerator
 from .utils import VariableSignalGenerator
@@ -174,6 +174,25 @@ class TestSimulator(unittest.TestCase):
 class TestComplexSimulator(unittest.TestCase):
     
     def test_fit(self):
+        return
+
+
+class TestSimulatorGroup(unittest.TestCase):
+    
+    def test_fit(self):
+        gen = SignalGenerator()
+        gen.fit(['sin', 'cos'])
+        xform = SimulatorGroup(
+            WhiteNoise(mu=10, sigma=5, clones=2),
+            WhiteNoise(mu=0, sigma=0.1, clones=2)
+        )
+        xform.fit(gen.X, gen.Y)
+        self.assertEqual(list(numpy.round(xform.X[0][:3], 4)), [0, 0.0063, 0.0126])
+        self.assertEqual(list(numpy.round(xform.X[1][:3], 4)), [12.4836, 9.315, 13.251])
+        self.assertEqual(list(numpy.round(xform.X[-2][:3], 4)), [0.8886, 0.9369, 0.9057])
+        self.assertEqual(list(numpy.round(xform.X[-1][:3], 4)), [1.0785, 0.8222, 1.0714])
+        self.assertEqual(len(xform.X), 12)
+        self.assertEqual(len(xform.X[0]), 1000)
         return
 
 

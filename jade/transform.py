@@ -372,6 +372,106 @@ class ComplexSimulator(Simulator):
     registered = False
 
 
+class SimulatorGroup(Simulator):
+    """
+    Transform for combining multiple simulators in parallel,
+    so that all simulators see the same input data and aren't
+    required to be applied in a chain.
+    """
+
+    def __init__(self, *args):
+        if len(args) != 0 and isinstance(args[0], (list, tuple)):
+            args = args[0]
+        self.simulators = []
+        for arg in args:
+            self.add(arg)
+        return
+
+    def __repr__(self):
+        return '{}(\n\t{})'.format(self.__class__.__name__, ',\n\t'.join(map(repr, self.simulators)))
+
+    def __getitem__(self, key):
+        """
+        Return transform with in chain. If the input is a slice,
+        return a new SimulatorGroup with that slice of simulators.
+        """
+        if isinstance(key, slice):
+            return SimulatorGroup(self.simulators[key])
+        return self.simulators[key]
+
+    def __iter__(self):
+        """
+        Generator for the object. Returns individual simulators during
+        each phase of iteration.
+        """
+        for xf in self.simulators:
+            yield xf
+        return
+
+    def clone(self):
+        """
+        Clone object.
+        """
+        return self.__class__([sim.clone() for sim in self.simulators])
+
+    def add(self, simulator):
+        """
+        Add transform to internal transform list.
+        """
+        if not isinstance(simulator, Simulator):
+            raise AssertionError('No rule for transforming data with {} object!'.format(str(type(simulator))))
+        self.simulators.append(simulator)
+        return
+
+    @property
+    def registered(self):
+        """
+        Proxy for checking if all internal simulators are registered.
+        """
+        for sim in self.simulators:
+            if not sim.registered:
+                return False
+        return True
+
+    def register(self, x, y=None):
+        """
+        Register a single element in target space.
+
+        Args:
+            x (object): Single target to apply transformation to.
+            y (object): Single response to apply transformation to.
+        """
+        for sim in self.simulators:
+            if self.registered:
+                break
+            sim.register(x, y)
+        return
+
+    def parameterize(self):
+        """
+        Parameterize models for downstream transformation.
+        """
+        for sim in self.simulators:
+            sim.parameterize()
+        return
+
+    def transform(self, x, y=None):
+        """
+        Apply transformation to a single element in target space.
+
+        Args:
+            x (object): Single target to apply transformation to.
+            y (object): Single response to apply transformation to.
+        """
+        ox, oy = [], []
+        for sim in self.simulators:
+            tx, ty = sim.transform(x, y)
+            ox.extend(tx)
+            if y is not None:
+                oy.extend(ty)
+        return ox, oy if y is not None else y
+
+
 # flatteners
 # ----------
 class Reduce(Transform):

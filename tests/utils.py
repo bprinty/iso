@@ -76,6 +76,7 @@ class WhiteNoise(Simulator):
         self.mu = mu
         self.sigma = sigma
         self.clones = clones
+        numpy.random.seed(42)
         return
 
     def transform(self, x, y=None):

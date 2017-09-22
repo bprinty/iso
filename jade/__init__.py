@@ -23,6 +23,7 @@ from .transform import Reduce
 
 from .transform import Simulator
 from .transform import ComplexSimulator
+from .transform import SimulatorGroup
 
 from .learn import Learner
 
