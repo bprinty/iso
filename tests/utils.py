@@ -88,6 +88,28 @@ class WhiteNoise(Simulator):
         return tx, ty
 
 
+class FilterNoisiest(ComplexSimulator):
+
+    def __init__(self):
+        self.min, self.max = [], []
+        return
+
+    def register(self, x, y=None):
+        self.min.append(min(x))
+        self.max.append(max(x))
+        return
+
+    def parameterize(self):
+        self.min = min(self.min)
+        self.max = max(self.max)
+        return
+
+    def transform(self, x, y=None):
+        if max(x) == self.max or min(x) == self.min:
+            return [], [] if y is not None else y
+        return [x], [y] if y is not None else y
+
+
 class NormalizedPower(Feature):
     
     def transform(self, x):

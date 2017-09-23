@@ -18,6 +18,7 @@ from .utils import SignalGenerator
 from .utils import VariableSignalGenerator
 from .utils import SegmentSignal
 from .utils import WhiteNoise
+from .utils import FilterNoisiest
 
 
 # tests
@@ -174,6 +175,16 @@ class TestSimulator(unittest.TestCase):
 class TestComplexSimulator(unittest.TestCase):
     
     def test_fit(self):
+        gen = SignalGenerator()
+        gen.fit(['sin', 'cos'])
+        xform = TransformChain([
+            WhiteNoise(mu=0, sigma=2, clones=10),
+            FilterNoisiest(),
+        ])
+        xform.fit(gen.X, gen.Y)
+        self.assertEqual(len(xform.X), 20)
+        self.assertEqual(len(xform.transforms[0].X), 22)
+        self.assertEqual(len(xform.transforms[1].X), 20)
         return
 
 
