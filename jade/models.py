@@ -10,7 +10,7 @@
 # imports
 # -------
 import numpy
-from scipy import optimize
+# from scipy import optimize
 from sklearn import metrics
 from sklearn.base import BaseEstimator, TransformerMixin
 

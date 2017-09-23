@@ -29,6 +29,7 @@ clean:
 	rm -fr .eggs/
 	find . -name '*.egg-info' -exec rm -fr {} +
 	find . -name '*.egg' -exec rm -fr {} +
+	rm -rf .py2 .py3
 
 lint:
 	flake8 jade tests
@@ -39,7 +40,7 @@ test-py2:
 	@echo "Running python2 tests ... "
 	virtualenv .py2
 	. .py2/bin/activate
-	pip install pytest
+	pip install pytest pytest-runner
 	pip install -r requirements.txt
 	python setup.py test
 	rm -rf .py2
@@ -48,7 +49,7 @@ test-py3:
 	@echo "Running python3 tests ... "
 	virtualenv -p python3 .py3
 	. .py3/bin/activate
-	pip install pytest
+	pip install pytest pytest-runner
 	pip install -r requirements.txt
 	python3 setup.py test
 	rm -rf .py3
