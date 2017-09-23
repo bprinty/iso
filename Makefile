@@ -28,7 +28,7 @@ clean:
 	rm -fr dist/
 	rm -fr .eggs/
 	find . -name '*.egg-info' -exec rm -fr {} +
-	find . -name '*.egg' -exec rm -f {} +
+	find . -name '*.egg' -exec rm -fr {} +
 
 lint:
 	flake8 jade tests
@@ -37,19 +37,22 @@ test: test-py2 test-py3
 
 test-py2:
 	@echo "Running python2 tests ... "
-	if [ ! -e .py2 ]; then virtualenv .py2; fi
-	. .py2/bin/activate && \
-	pip install nose nose-parameterized && \
-	pip install -r requirements.txt && \
+	virtualenv .py2
+	. .py2/bin/activate
+	pip install pytest
+	pip install -r requirements.txt
 	python setup.py test
+	rm -rf .py2
 
 test-py3:
 	@echo "Running python3 tests ... "
-	if [ ! -e .py3 ]; then virtualenv -p python3 .py3; fi
-	. .py3/bin/activate && \
-	pip install nose nose-parameterized && \
-	pip install -r requirements.txt && \
-	python setup.py test
+	virtualenv -p python3 .py3
+	. .py3/bin/activate
+	pip install pytest
+	pip install -r requirements.txt
+	python3 setup.py test
+	rm -rf .py3
+
 
 tag:
 	VER=$(VERSION) && if [ `git tag | grep "$$VER" | wc -l` -ne 0 ]; then git tag -d $$VER; fi
@@ -58,17 +61,16 @@ tag:
 docs:
 	cd docs && make html
 
-release: tag
-	VER=$(VERSION) && git push origin :$$VER || echo 'Remote tag available'
-	VER=$(VERSION) && git push origin $$VER
-	python setup.py sdist upload -r internal
-	python setup.py bdist upload -r internal
-	python setup.py bdist_wheel upload -r internal
 
 build: clean
 	python setup.py sdist
 	python setup.py bdist_wheel
 	ls -l dist
+
+release: build tag
+	VER=$(VERSION) && git push $(REMOTE) :$$VER || echo 'Remote tag available'
+	VER=$(VERSION) && git push $(REMOTE) $$VER
+	twine upload --skip-existing dist/*
 
 install: clean
 	python setup.py install

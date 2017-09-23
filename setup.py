@@ -22,8 +22,8 @@ with open('requirements.txt', 'r') as reqs:
     requirements = map(lambda x: x.rstrip(), reqs.readlines())
 
 test_requirements = [
-    'nose',
-    'nose-parameterized',
+    'pytest',
+    'pytest-runner'
 ]
 
 
@@ -38,7 +38,7 @@ with open('README.rst') as readme_file:
 setup(
     name='jade',
     version=jade.__version__,
-    description='FILL THIS IN LATER',
+    description='Package for managing data transformations in complex machine-learning workflows.',
     long_description=readme,
     author='Blake Printy',
     author_email='bprinty@gmail.com',
@@ -54,7 +54,7 @@ setup(
     install_requires=requirements,
     license='Apache-3.0',
     zip_safe=False,
-    keywords='jade',
+    keywords=['jade', 'machine-learning', 'learning', 'data', 'modelling', 'ai'],
     classifiers=[
         'Intended Audience :: Developers',
         'License :: OSI Approved :: Apache-3.0 License',
@@ -66,6 +66,5 @@ setup(
         'Programming Language :: Python :: 3.3',
         'Programming Language :: Python :: 3.4',
     ],
-    test_suite='nose.collector',
     tests_require=test_requirements
 )
