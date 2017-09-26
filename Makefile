@@ -7,6 +7,7 @@
 
 # config
 # ------
+REMOTE      = origin
 VERSION     = `python -c 'import jade; print jade.__version__'`
 
 
