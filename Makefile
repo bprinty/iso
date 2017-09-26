@@ -28,6 +28,7 @@ clean:
 	rm -fr build/
 	rm -fr dist/
 	rm -fr .eggs/
+	find . -name '__pycache__' -exec rm -fr {} +
 	find . -name '*.egg-info' -exec rm -fr {} +
 	find . -name '*.egg' -exec rm -fr {} +
 	rm -rf .py2 .py3
@@ -70,7 +71,6 @@ docs:
 
 build: clean
 	python setup.py sdist
-	python setup.py bdist_wheel
 	ls -l dist
 
 
