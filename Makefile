@@ -7,7 +7,11 @@
 
 # config
 # ------
-VERSION    = `python -c 'import jade; print jade.__version__'`
+SHELL      := /bin/bash
+PYTHONPATH :=
+
+VERSION     = `python -c 'import jade; print jade.__version__'`
+
 
 
 # targets
@@ -49,8 +53,8 @@ test-py3:
 	@echo "Running python3 tests ... "
 	virtualenv -p python3 .py3
 	. .py3/bin/activate
-	pip install pytest pytest-runner
-	pip install -r requirements.txt
+	pip3 install pytest pytest-runner
+	pip3 install -r requirements.txt
 	python3 setup.py test
 	rm -rf .py3
 

@@ -9,6 +9,7 @@
 # imporobj
 # -------
 import os
+import sys
 import unittest
 import subprocess
 
@@ -21,9 +22,10 @@ from . import __base__, __resources__, tmpfile
 class TestEntryPoints(unittest.TestCase):
 
     def call(self, subcommand, *args):
-        return subprocess.check_output('python -m jade {} {}'.format(
-            subcommand, ' '.join(args)
-        ), stderr=subprocess.STDOUT, shell=True, cwd=__base__)
+        python = 'python3' if sys.version_info > (3, 0) else 'python'
+        return subprocess.check_output('{} -m jade {} {}'.format(
+            python, subcommand, ' '.join(args)
+        ), stderr=subprocess.STDOUT, shell=True, cwd=__base__, env=os.environ.copy())
 
     def test_version(self):
         res = self.call('version')

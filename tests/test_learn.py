@@ -204,10 +204,13 @@ class TestModelPersistence(unittest.TestCase):
         return
 
     def test_keras_save(self):
-        from keras.models import Sequential
-        from keras.layers import Dense, Dropout, Flatten, Reshape
-        from keras.layers import Conv1D, Conv2D, MaxPooling2D, MaxPooling1D
-        from keras.wrappers.scikit_learn import KerasClassifier
+        try:
+            from keras.models import Sequential
+            from keras.layers import Dense, Dropout, Flatten, Reshape
+            from keras.layers import Conv1D, Conv2D, MaxPooling2D, MaxPooling1D
+            from keras.wrappers.scikit_learn import KerasClassifier
+        except ImportError:
+            self.skipTest('Keras not installed on this system.')
         def build():
             cnn = Sequential([
                 Reshape((1, 100, 1), input_shape=(100,)),
@@ -262,5 +265,4 @@ class TestExtensions(unittest.TestCase):
                 SegmentSignal()
             ]
         )
-        print cross_val_score(learner, self.data, self.truth, cv=3)
         return
