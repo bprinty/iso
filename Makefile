@@ -7,9 +7,6 @@
 
 # config
 # ------
-SHELL      := /bin/bash
-PYTHONPATH :=
-
 VERSION     = `python -c 'import jade; print jade.__version__'`
 
 
