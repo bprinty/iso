@@ -243,48 +243,48 @@ class Learner(BaseEstimator):
         """
         return self.shaper.inverse_fit_transform(X, Y)
 
-    def transform(self, X, Y=None):
+    def transform(self, X, Y=None, jobs=1):
         """
         Transform input data into ai-ready tensor.
         """
         obj = self.vectorizer.clone()
-        X, Y = obj.fit_transform(X, Y, pred=True)
+        X, Y = obj.fit_transform(X, Y, jobs=jobs, pred=True)
         return X, Y
 
-    def score(self, X, Y, metric=metrics.accuracy_score, **kwargs):
+    def score(self, X, Y, jobs=1, metric=metrics.accuracy_score, **kwargs):
         """
         Apply model scoring function on transformed data.
         """
         metric = prepare_metric(metric)
         obj = self.vectorizer.clone()
-        tX, tY = obj.fit_transform(X, None, pred=True)
-        fX, fY = self.flatten(tX, self.vectorizer[-1]._Y if self.shaper is None else None)
+        tX, tY = obj.fit_transform(X, Y, jobs=jobs, pred=True)
+        fX, fY = self.flatten(tX, tY)
         pY = self.model.predict(fX, **kwargs)
-        return metric(tX, tY, **kwargs)
+        return metric(fY, pY, **kwargs)
 
-    def fit(self, X, Y, **kwargs):
+    def fit(self, X, Y, jobs=1, **kwargs):
         """
         Train learner for speicific data indices.
         """
         self.shaper = None
-        tX, tY = self.vectorizer.fit_transform(X, Y)
+        tX, tY = self.vectorizer.fit_transform(X, Y, jobs=jobs)
         self._X, self._Y = self.flatten(tX, tY)
         self.model.fit(self._X, self._Y, **kwargs)
         return self
 
-    def fit_transform(self, X, Y, **kwargs):
-        self.fit(X, Y, **kwargs)
+    def fit_transform(self, X, Y, jobs=1, **kwargs):
+        self.fit(X, Y, jobs=jobs, **kwargs)
         return self._X, self._Y
 
-    def fit_predict(self, X, Y, **kwargs):
+    def fit_predict(self, X, Y, jobs=1, **kwargs):
         """
         Fit models to data and return prediction.
         """
-        self.fit(X, Y, **kwargs)
+        self.fit(X, Y, jobs=jobs, **kwargs)
         if self.vectorizer.has_simulator:
             # we don't want to make predictions on the simulated
             # data, because it's only used to boost the training set
-            return self.predict(X, **kwargs)
+            return self.predict(X, jobs=jobs, **kwargs)
         else:
             # if we can fully back-transform the data, there's
             # no need to re-do the transformation process
@@ -293,12 +293,12 @@ class Learner(BaseEstimator):
             rX, rY = self.vectorizer.inverse_fit_transform(fX, fY)
         return rY
 
-    def predict(self, X, **kwargs):
+    def predict(self, X, jobs=1, **kwargs):
         """
         Predict results from new data.
         """
         obj = self.vectorizer.clone()
-        tX, tY = obj.fit_transform(X, None, pred=True)
+        tX, tY = obj.fit_transform(X, None, jobs=jobs, pred=True)
         fX, fY = self.flatten(tX, self.vectorizer[-1]._Y if self.shaper is None else None)
         pY = self.model.predict(fX, **kwargs)
         fX, fY = self.inverse_flatten(fX, pY)

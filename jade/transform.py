@@ -163,7 +163,7 @@ class Transform(TransformerMixin):
         self.__dict__['_{}'.format(dest)].append(block)
         return
     
-    def fit(self, X, Y=None):
+    def fit(self, X, Y=None, jobs=1):
         """
         Wrapper around transformations, doing the transformation process
         for each input in the target and response vectors.
@@ -230,7 +230,7 @@ class Transform(TransformerMixin):
             self.save(X, Y)
         return self
 
-    def fit_transform(self, X, Y=None):
+    def fit_transform(self, X, Y=None, jobs=1):
         """
         Fit and transform full input target space.
 
@@ -238,7 +238,7 @@ class Transform(TransformerMixin):
             X (numpy.array): Array with targets to apply transformation to.
             Y (numpy.array): Array with responses to apply transformation to.
         """
-        self.fit(X, Y)
+        self.fit(X, Y, jobs=jobs)
         return self._X, self._Y
 
     def inverse_fit(self, X, Y=None):
@@ -482,7 +482,7 @@ class Reduce(Transform):
     collision.
     """
 
-    def fit(self, X, Y=None):
+    def fit(self, X, Y=None, jobs=1):
         """
         "Flatten" input, changing dimensionality into
         something conducive to AI model development. In a nutshell,
@@ -599,7 +599,7 @@ class TransformChain(Transform):
         self.transforms.append(transform)
         return
 
-    def fit(self, X, Y=None, pred=False):
+    def fit(self, X, Y=None, jobs=1, pred=False):
         """
         Traverse data and apply individual transformations. During
         this process, if the transformation is a simulator and the
@@ -632,7 +632,7 @@ class TransformChain(Transform):
             self.save(X, Y)
         return self
 
-    def fit_transform(self, X, Y=None, pred=False):
+    def fit_transform(self, X, Y=None, jobs=1, pred=False):
         """
         Fit and transform full input target space.
 
@@ -643,7 +643,7 @@ class TransformChain(Transform):
                 for downstream prediction. If that's the case, simulators will
                 be skipped.
         """
-        self.fit(X, Y, pred=pred)
+        self.fit(X, Y, jobs=1, pred=pred)
         return self._X, self._Y
 
     def inverse_fit(self, X, Y=None, Z=None):

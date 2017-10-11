@@ -26,5 +26,6 @@ from .transform import ComplexSimulator
 from .transform import SimulatorGroup
 
 from .learn import Learner
+from .learn import Validator
 
 from .models import IdentityModel
