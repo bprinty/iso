@@ -584,6 +584,17 @@ class TransformChain(Transform):
                 return True
         return False
 
+    @property
+    def is_complex(self):
+        """
+        Return boolean describing whether or not chain has a complex
+        operation within it.
+        """
+        for xf in self.transforms:
+            if isinstance(xf, (ComplexTransform, ComplexSimulator)):
+                return True
+        return False
+
     def clone(self):
         """
         Clone object.
@@ -663,3 +674,21 @@ class TransformChain(Transform):
             tx, ty = xf.inverse_fit_transform(tx, ty)
         self._iX, self._iY = tx, ty
         return self
+
+    def transform(self, x, y=None):
+        """
+        Apply non-complex transformations to a single element in target space.
+        This method isn't used for fitting models, but is included to
+        do quick transformations on single data points for simple transforms.
+
+        Args:
+            x (object): Single target to apply transformation to.
+            y (object): Single response to apply transformation to.
+        """
+        if self.is_complex:
+            raise AssertionError('Cannot apply complex transform operation to '
+                                 'single instance. This chain has a complex operation.')
+        tx, ty = x, y
+        for xf in self.transforms:
+            tx, ty = xf.transform(tx, ty)
+        return tx, ty

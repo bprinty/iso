@@ -35,33 +35,31 @@ class TestFeatureTransform(unittest.TestCase):
            [{'sin': i} for i in numpy.linspace(11, 15, 10)] + \
            [{'cos': i} for i in numpy.linspace(11, 15, 10)]
 
-    def test_transform(self):
-        generator = TransformChain(
-            VariableSignalGenerator(fs=10000),
-            WhiteNoise(sigma=0.1, clones=2),
-            SegmentSignal(chunksize=200),
-            Reduce()
+    def test_simple(self):
+        xform = TransformChain(
+            VariableSignalGenerator(fs=1000),
+            FeatureTransform(
+                NormalizedPower(),
+                DominantFrequency(fs=1000)
+            )
         )
-        X, Y = generator.fit_transform([{'sin': 100}, {'cos': 150}])
-        xform = FeatureTransform(
-            NormalizedPower(),
-            DominantFrequency(fs=10000)
-        )
-        X, Y = xform.fit_transform(X, Y)
-        # print X, Y
-        # print X
+        xform.fit(self.data[:10])
+        self.assertEqual(map(list, numpy.round(xform._X, 2)), [[0.64, 5], [0.63, 6], [0.63, 6], [0.63, 7], [0.63, 7], [0.64, 8], [0.64, 8], [0.64, 9], [0.64, 9], [0.64, 10]])
+        self.assertEqual(len(xform._X), 10)
         return
 
     def test_chained(self):
-        # learner = Learner(
-        #     transforms=[
-        #         SignalGenerator(),
-        #         FeatureTransform(
-        #             Power(),
-        #             Frequency()
-        #         )
-        #     ],
-        #     model=SVC()
-        # )
-        # X, Y = xform.transform(self.data, self.truth)
+        xform = TransformChain(
+            VariableSignalGenerator(fs=1000),
+            SegmentSignal(chunksize=200),
+            Reduce(),
+            FeatureTransform(
+                NormalizedPower(),
+                DominantFrequency(fs=1000)
+            )
+        )
+        xform.fit(self.data)
+        self.assertEqual([round(x, 2) for x in xform._X[0]], [0.64, 5])
+        self.assertEqual([round(x, 2) for x in xform._X[-1]], [0.64, 15])
+        self.assertEqual(len(xform._X), len(self.data) * 5)
         return
