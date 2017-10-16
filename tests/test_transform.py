@@ -262,7 +262,6 @@ class TestTransformChain(unittest.TestCase):
             SegmentSignal()
         ])
         x, y = xform.transform('sin')
-        print x
         self.assertEqual(list(numpy.round(x[0][:3], 4)), [0, 0.0063, 0.0126])
         self.assertEqual(len(x[0]), xform.transforms[1].chunksize)
         self.assertEqual(len(x[1]), xform.transforms[1].chunksize)
