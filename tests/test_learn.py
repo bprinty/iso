@@ -12,11 +12,13 @@ import os
 import unittest
 import numpy
 from sklearn.model_selection import cross_val_score
+from sklearn.svm import SVC
+from sklearn import metrics
 import pandas
 import pytest
 import random
 
-from jade import Learner, Reduce, FeatureTransform
+from jade import Learner, Validator, Reduce, FeatureTransform
 from . import __base__, __resources__, tmpfile
 from .utils import VariableSignalGenerator, SegmentSignal, WhiteNoise
 from .utils import NormalizedPower, DominantFrequency
@@ -30,6 +32,9 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 # tests
 # -----
 class TestLearner(unittest.TestCase):
+    """
+    Tests for jade.Learner object.
+    """
     # generate data:
     # here we're tyring to predict whether or not a
     # signal is above a periodicity of 5
@@ -171,8 +176,51 @@ class TestLearner(unittest.TestCase):
         self.assertEqual(len(pred), 2)
         return
 
+    def test_score(self):
+        learner = Learner(
+            transform=[
+                VariableSignalGenerator(),
+                SegmentSignal()
+            ]
+        )
+        learner.fit(self.data, self.truth)
+
+        # since this is an easy classification task, make sure
+        # there is a misclassification by changing truth
+        truth = list(self.truth)
+        truth[0] = not truth[0]
+        truth[-1] = not truth[-1]
+        truth[-2] = not truth[-2]
+
+        # simple metric
+        score = learner.score(self.data, truth, metric=metrics.precision_score)
+        self.assertEqual(score, 0.9)
+
+        # list metric
+        scores = learner.score(self.data, truth,
+            metric=[
+                metrics.precision_score,
+                metrics.recall_score
+            ]
+        )
+        self.assertEqual([round(x, 2) for x in scores], [0.9, 0.95])
+
+        # dictionary scoring
+        scoring = learner.score(self.data, truth,
+            metric={
+                'sens': metrics.precision_score,
+                'ppv': metrics.recall_score
+            }
+        )
+        scoring = {k: round(v, 2) for k, v, in scoring.iteritems()}
+        self.assertEqual(scoring, {'sens': 0.9, 'ppv': 0.95})
+        return
+
 
 class TestModelPersistence(unittest.TestCase):
+    """
+    Tests for jade.Learner model persistence.
+    """
     # generate data:
     # here we're tyring to predict whether or not a
     # signal is above a periodicity of 5
@@ -183,7 +231,6 @@ class TestModelPersistence(unittest.TestCase):
            [{'cos': i} for i in numpy.linspace(11, 15, 10)]
 
     def test_save(self):
-        from sklearn.svm import SVC
         learner = Learner(
             transform=[
                 VariableSignalGenerator(),
@@ -244,6 +291,53 @@ class TestModelPersistence(unittest.TestCase):
         del learner
         learner = Learner.load(tmp)
         self.assertEqual(list(learner.predict(test, verbose=0)), list(pred))
+        return
+
+
+class TestValidator(unittest.TestCase):
+    """
+    Tests for jade.Validator object.
+    """
+    # generate data:
+    # here we're tyring to predict whether or not a
+    # signal is above a periodicity of 5
+    truth = [False] * 20 + [True] * 20
+    data = [{'sin': i} for i in numpy.linspace(5, 10, 10)] + \
+           [{'cos': i} for i in numpy.linspace(5, 10, 10)] + \
+           [{'sin': i} for i in numpy.linspace(11, 15, 10)] + \
+           [{'cos': i} for i in numpy.linspace(11, 15, 10)]
+
+    learner = Learner(
+        transform=[
+            VariableSignalGenerator(),
+            WhiteNoise(clones=2),
+            SegmentSignal(),
+            Reduce()
+        ], model=SVC(kernel='rbf')
+    )
+
+    def test_cv_score(self):
+        val = Validator(self.learner, self.data, self.truth)
+        scores = val.cv_score(folds=3, seed=42)
+        self.assertEqual([round(x, 2) for x in scores], [1, 0.92, 0.99])
+        return
+
+    def test_split_score(self):
+        val = Validator(self.learner, self.data, self.truth)
+        score = val.split_score(test_size=0.3, seed=42)
+        self.assertEqual(round(score, 2), 0.92)
+        return
+
+    def test_bootstrap_score(self):
+        val = Validator(self.learner, self.data, self.truth)
+        scores = val.bootstrap_score(splits=3, test_size=0.3, seed=42)
+        self.assertEqual([round(x, 2) for x in scores], [0.92, 1, 0.99])
+        return
+
+    def test_identity_score(self):
+        val = Validator(self.learner, self.data, self.truth)
+        score = val.identity_score()
+        self.assertEqual(score, 1)
         return
 
 

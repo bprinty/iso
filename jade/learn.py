@@ -16,12 +16,33 @@ import logging
 from sklearn.base import BaseEstimator, clone
 from sklearn.svm import SVC
 from sklearn.externals import joblib
+from sklearn.model_selection import train_test_split, KFold, LeaveOneOut, ShuffleSplit
+from sklearn.exceptions import UndefinedMetricWarning
+from sklearn import metrics
 from gems import composite
 from cached_property import cached_property
 
 from .transform import TransformChain, Reduce
 from .feature import FeatureTransform
 from .jade import session
+
+
+# config
+# ------
+__models__ = os.path.realpath(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'models'))
+warnings.simplefilter("ignore", UndefinedMetricWarning)
+
+
+# functions
+# ---------
+def prepare_metric(metric):
+    if isinstance(metric, dict):
+        res = lambda x, y: {k: metric[k](x, y) for k in metric}
+    elif isinstance(metric, (list, tuple)):
+        res = lambda x, y: [func(x, y) for func in metric]
+    else:
+        res = metric
+    return res
 
 
 # model building
@@ -222,44 +243,48 @@ class Learner(BaseEstimator):
         """
         return self.shaper.inverse_fit_transform(X, Y)
 
-    def transform(self, X, Y=None):
+    def transform(self, X, Y=None, jobs=1):
         """
         Transform input data into ai-ready tensor.
         """
         obj = self.vectorizer.clone()
-        X, Y = obj.fit_transform(X, Y, pred=True)
+        X, Y = obj.fit_transform(X, Y, jobs=jobs, pred=True)
         return X, Y
 
-    def score(self, X, Y, **kwargs):
+    def score(self, X, Y, jobs=1, metric=metrics.accuracy_score, **kwargs):
         """
         Apply model scoring function on transformed data.
         """
-        tX, tY = self.transform(X, Y)
-        return self.model.score(tX, tY, **kwargs)
+        metric = prepare_metric(metric)
+        obj = self.vectorizer.clone()
+        tX, tY = obj.fit_transform(X, Y, jobs=jobs, pred=True)
+        fX, fY = self.flatten(tX, tY)
+        pY = self.model.predict(fX, **kwargs)
+        return metric(fY, pY, **kwargs)
 
-    def fit(self, X, Y, **kwargs):
+    def fit(self, X, Y, jobs=1, **kwargs):
         """
         Train learner for speicific data indices.
         """
         self.shaper = None
-        tX, tY = self.vectorizer.fit_transform(X, Y)
+        tX, tY = self.vectorizer.fit_transform(X, Y, jobs=jobs)
         self._X, self._Y = self.flatten(tX, tY)
         self.model.fit(self._X, self._Y, **kwargs)
         return self
 
-    def fit_transform(self, X, Y, **kwargs):
-        self.fit(X, Y, **kwargs)
+    def fit_transform(self, X, Y, jobs=1, **kwargs):
+        self.fit(X, Y, jobs=jobs, **kwargs)
         return self._X, self._Y
 
-    def fit_predict(self, X, Y, **kwargs):
+    def fit_predict(self, X, Y, jobs=1, **kwargs):
         """
         Fit models to data and return prediction.
         """
-        self.fit(X, Y, **kwargs)
+        self.fit(X, Y, jobs=jobs, **kwargs)
         if self.vectorizer.has_simulator:
             # we don't want to make predictions on the simulated
             # data, because it's only used to boost the training set
-            return self.predict(X, **kwargs)
+            return self.predict(X, jobs=jobs, **kwargs)
         else:
             # if we can fully back-transform the data, there's
             # no need to re-do the transformation process
@@ -268,14 +293,104 @@ class Learner(BaseEstimator):
             rX, rY = self.vectorizer.inverse_fit_transform(fX, fY)
         return rY
 
-    def predict(self, X, **kwargs):
+    def predict(self, X, jobs=1, **kwargs):
         """
         Predict results from new data.
         """
         obj = self.vectorizer.clone()
-        tX, tY = obj.fit_transform(X, None, pred=True)
+        tX, tY = obj.fit_transform(X, None, jobs=jobs, pred=True)
         fX, fY = self.flatten(tX, self.vectorizer[-1]._Y if self.shaper is None else None)
         pY = self.model.predict(fX, **kwargs)
         fX, fY = self.inverse_flatten(fX, pY)
         rX, rY = obj.inverse_fit_transform(fX, fY)
         return rY
+
+
+# model validation
+# ----------------
+class Validator(object):
+    """
+    Validation methods for testing out different models.
+    """
+    def __init__(self, learner, targets, truth):
+        self.learner = learner
+        self.targets = targets
+        self.truth = truth
+        return
+
+    def cv_score(self, folds=5, schedule=None, stratified=False,
+        seed=42, metric=metrics.accuracy_score,
+        verbose=False, jobs=1):
+        """
+        Run cross-validation for learner using specified schedule
+        or number of folds.
+        """
+        if schedule is None:
+            if folds > len(self.targets):
+                raise AssertionError("Number of folds must be less than size of data!")
+            if folds < len(self.targets):
+                if stratified:
+                    # TODO: figure out how to do stratified split here
+                    #       using the StratifiedKFold class. It would require
+                    #       a transformation of the truth vector and a notion of
+                    #       what events are available after transformation.
+                    raise NotImplementedError('Stratified train/test splitting not yet implemented!')
+                else:
+                    schedule = KFold(n_splits=folds, random_state=seed)
+            else:
+                schedule = LeaveOneOut()
+        scores = []
+        for itrain, itest in schedule.split(self.targets):
+            xtrain = [self.targets[i] for i in itrain]
+            ytrain = [self.truth[i] for i in itrain]
+            xtest = [self.targets[i] for i in itest]
+            ytest = [self.truth[i] for i in itest]
+            self.learner.fit(xtrain, ytrain, jobs=jobs)
+            scores.append(self.learner.score(xtest, ytest, metric=metric, jobs=jobs))
+        return scores
+
+    def split_score(self,
+        test_size=None, train_size=None,
+        seed=42, metric=metrics.accuracy_score,
+        verbose=False, jobs=1):
+        """
+        Run validation for learner using simple train/test split of
+        data according to specified proportions.
+        """
+        xtrain, xtest, ytrain, ytest = train_test_split(
+            self.targets, self.truth,
+            test_size=test_size,
+            train_size=train_size,
+            random_state=seed
+        )
+        self.learner.fit(xtrain, ytrain, jobs=jobs)
+        return self.learner.score(xtest, ytest, metric=metric, jobs=jobs)
+
+    def bootstrap_score(self,
+        splits=3, test_size=0.3, train_size=None,
+        seed=42, metric=metrics.accuracy_score,
+        verbose=False, jobs=1):
+        """
+        Run bootstrap validation for the data, randomly generating traning
+        and testing sets of specified proportions for a number of splits.
+        """
+        return self.cv_score(
+            schedule=ShuffleSplit(
+                n_splits=splits,
+                test_size=test_size,
+                train_size=train_size,
+                random_state=seed
+            ), metric=metric,
+            verbose=verbose
+        )
+
+    def identity_score(self,
+        metric=metrics.accuracy_score,
+        verbose=False, jobs=1):
+        """
+        Validate prediction performance of the dataset on itself.
+        """
+        self.learner.fit(self.targets, self.truth, jobs=jobs)
+        return self.learner.score(
+            self.targets, self.truth, metric=metric, jobs=jobs)
+

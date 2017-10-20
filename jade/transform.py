@@ -163,7 +163,7 @@ class Transform(TransformerMixin):
         self.__dict__['_{}'.format(dest)].append(block)
         return
     
-    def fit(self, X, Y=None):
+    def fit(self, X, Y=None, jobs=1):
         """
         Wrapper around transformations, doing the transformation process
         for each input in the target and response vectors.
@@ -230,7 +230,7 @@ class Transform(TransformerMixin):
             self.save(X, Y)
         return self
 
-    def fit_transform(self, X, Y=None):
+    def fit_transform(self, X, Y=None, jobs=1):
         """
         Fit and transform full input target space.
 
@@ -238,7 +238,7 @@ class Transform(TransformerMixin):
             X (numpy.array): Array with targets to apply transformation to.
             Y (numpy.array): Array with responses to apply transformation to.
         """
-        self.fit(X, Y)
+        self.fit(X, Y, jobs=jobs)
         return self._X, self._Y
 
     def inverse_fit(self, X, Y=None):
@@ -482,7 +482,7 @@ class Reduce(Transform):
     collision.
     """
 
-    def fit(self, X, Y=None):
+    def fit(self, X, Y=None, jobs=1):
         """
         "Flatten" input, changing dimensionality into
         something conducive to AI model development. In a nutshell,
@@ -584,6 +584,17 @@ class TransformChain(Transform):
                 return True
         return False
 
+    @property
+    def is_complex(self):
+        """
+        Return boolean describing whether or not chain has a complex
+        operation within it.
+        """
+        for xf in self.transforms:
+            if isinstance(xf, (ComplexTransform, ComplexSimulator)):
+                return True
+        return False
+
     def clone(self):
         """
         Clone object.
@@ -599,7 +610,7 @@ class TransformChain(Transform):
         self.transforms.append(transform)
         return
 
-    def fit(self, X, Y=None, pred=False):
+    def fit(self, X, Y=None, jobs=1, pred=False):
         """
         Traverse data and apply individual transformations. During
         this process, if the transformation is a simulator and the
@@ -632,7 +643,7 @@ class TransformChain(Transform):
             self.save(X, Y)
         return self
 
-    def fit_transform(self, X, Y=None, pred=False):
+    def fit_transform(self, X, Y=None, jobs=1, pred=False):
         """
         Fit and transform full input target space.
 
@@ -643,7 +654,7 @@ class TransformChain(Transform):
                 for downstream prediction. If that's the case, simulators will
                 be skipped.
         """
-        self.fit(X, Y, pred=pred)
+        self.fit(X, Y, jobs=1, pred=pred)
         return self._X, self._Y
 
     def inverse_fit(self, X, Y=None, Z=None):
@@ -663,3 +674,21 @@ class TransformChain(Transform):
             tx, ty = xf.inverse_fit_transform(tx, ty)
         self._iX, self._iY = tx, ty
         return self
+
+    def transform(self, x, y=None):
+        """
+        Apply non-complex transformations to a single element in target space.
+        This method isn't used for fitting models, but is included to
+        do quick transformations on single data points for simple transforms.
+
+        Args:
+            x (object): Single target to apply transformation to.
+            y (object): Single response to apply transformation to.
+        """
+        if self.is_complex:
+            raise AssertionError('Cannot apply complex transform operation to '
+                                 'single instance. This chain has a complex operation.')
+        tx, ty = x, y
+        for xf in self.transforms:
+            tx, ty = xf.transform(tx, ty)
+        return tx, ty
