@@ -13,8 +13,8 @@ import unittest
 import numpy
 from sklearn.svm import SVC
 
-from jade import Transform, ComplexTransform, TransformChain, Reduce
-from jade import FeatureTransform
+from iso import Transform, ComplexTransform, TransformChain, Reduce
+from iso import FeatureTransform
 from . import __base__, __resources__, tmpfile
 from .utils import SignalGenerator
 from .utils import VariableSignalGenerator

@@ -9,7 +9,7 @@ __version__ = '0.0.2'
 
 # imports
 # -------
-from .jade import options, session
+from .iso import options, session
 
 from .feature import Feature
 from .feature import ComplexFeature

@@ -13,7 +13,7 @@ import sys
 import unittest
 import subprocess
 
-import jade
+import iso
 from . import __base__, __resources__, tmpfile
 
 
@@ -23,13 +23,13 @@ class TestEntryPoints(unittest.TestCase):
 
     def call(self, subcommand, *args):
         python = 'python3' if sys.version_info > (3, 0) else 'python'
-        return subprocess.check_output('{} -m jade {} {}'.format(
+        return subprocess.check_output('{} -m iso {} {}'.format(
             python, subcommand, ' '.join(args)
         ), stderr=subprocess.STDOUT, shell=True, cwd=__base__, env=os.environ.copy())
 
     def test_version(self):
         res = self.call('version')
-        self.assertTrue(res, jade.__version__)
+        self.assertTrue(res, iso.__version__)
         return
 
     def test_extract(self):

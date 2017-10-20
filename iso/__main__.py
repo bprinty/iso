@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Main entry point for jade
+# Main entry point for iso
 #
 # @author <bprinty@gmail.com>
 # ------------------------------------------------

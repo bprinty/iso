@@ -2,7 +2,7 @@ include LICENSE
 include README.rst
 include Makefile
 include requirements.txt
-include jade/.jade
+include iso/.iso
 
 recursive-include tests docs *
 recursive-exclude * __pycache__

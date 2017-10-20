@@ -12,7 +12,7 @@ import os
 import unittest
 import numpy
 
-from jade import Transform, ComplexTransform, TransformChain, SimulatorGroup, Reduce
+from iso import Transform, ComplexTransform, TransformChain, SimulatorGroup, Reduce
 from . import __base__, __resources__, tmpfile
 from .utils import SignalGenerator
 from .utils import VariableSignalGenerator

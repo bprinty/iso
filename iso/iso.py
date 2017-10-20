@@ -17,8 +17,8 @@ from . import exc
 # config
 # ------
 __base__ = os.path.dirname(os.path.realpath(__file__))
-__default_config__ = os.path.join(__base__, '.jade')
-__user_config__ = os.path.join(os.getenv("HOME"), '.jade')
+__default_config__ = os.path.join(__base__, '.iso')
+__user_config__ = os.path.join(os.getenv("HOME"), '.iso')
 
 
 class Session(object):
@@ -26,7 +26,7 @@ class Session(object):
     Object to manage all session configuration.
     """
     
-    def __init__(self, cpus=1, db='/data/jade', data=None, models=None):
+    def __init__(self, cpus=1, db='/data/iso', data=None, models=None):
         self.cpus = cpus
         self.db = db
         self.models = os.path.join(self.db, 'models') if models is None else models

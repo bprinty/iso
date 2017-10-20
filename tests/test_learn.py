@@ -18,7 +18,8 @@ import pandas
 import pytest
 import random
 
-from jade import Learner, Validator, Reduce, FeatureTransform
+from iso import Learner, Validator, Reduce, FeatureTransform
+
 from . import __base__, __resources__, tmpfile
 from .utils import VariableSignalGenerator, SegmentSignal, WhiteNoise
 from .utils import NormalizedPower, DominantFrequency
@@ -33,7 +34,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 # -----
 class TestLearner(unittest.TestCase):
     """
-    Tests for jade.Learner object.
+    Tests for iso.Learner object.
     """
     # generate data:
     # here we're tyring to predict whether or not a
@@ -219,7 +220,7 @@ class TestLearner(unittest.TestCase):
 
 class TestModelPersistence(unittest.TestCase):
     """
-    Tests for jade.Learner model persistence.
+    Tests for iso.Learner model persistence.
     """
     # generate data:
     # here we're tyring to predict whether or not a
@@ -296,7 +297,7 @@ class TestModelPersistence(unittest.TestCase):
 
 class TestValidator(unittest.TestCase):
     """
-    Tests for jade.Validator object.
+    Tests for iso.Validator object.
     """
     # generate data:
     # here we're tyring to predict whether or not a

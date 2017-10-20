@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # Additional scikit-learn models that can be useful
-# in the context of jade transforms.
+# in the context of iso transforms.
 #
 # @author <bprinty@gmail.com>
 # ----------------------------------------------

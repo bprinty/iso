@@ -3,9 +3,9 @@ Overview
 ========
 
 
-The sections below detail the internal API used by ``jade`` and other low-level concepts behind how the module works. If you're just looking to use the command line tool, see the `Command Line <./cli.html>`_ section of the documentation.
+The sections below detail the internal API used by ``iso`` and other low-level concepts behind how the module works. If you're just looking to use the command line tool, see the `Command Line <./cli.html>`_ section of the documentation.
 
-In a nutshell, jade was designed to ...
+In a nutshell, iso was designed to ...
 
 
 

@@ -1,9 +1,9 @@
 ======================================
-Welcome to jade's documentation!
+Welcome to iso's documentation!
 ======================================
 
 
-`jade <./index.html>`_ is a module for managing data transforms in the context of AI model building. It's overall purpose is to compartmentalize and simplify preprocessing operations that must happen to data .... DO THIS LATER
+`iso <./index.html>`_ is a module for managing data transforms in the context of AI model building. It's overall purpose is to compartmentalize and simplify preprocessing operations that must happen to data .... DO THIS LATER
 
 
 For information about how to use the command-line tool, see the `Command Line <./cli.html>`_ section of the documentation.

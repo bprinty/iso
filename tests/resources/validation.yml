@@ -19,6 +19,6 @@ learner:
             hidden_layer_sizes: (100, 50, 25)
 
 validator:
-    jade.CrossValidate:
+    iso.CrossValidate:
         folds: 5
 

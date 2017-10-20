@@ -16,7 +16,7 @@ from copy import copy, deepcopy
 import hashlib
 import logging
 
-from .jade import session
+from .iso import session
 
 
 # transformation

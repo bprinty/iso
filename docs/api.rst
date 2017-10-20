@@ -5,40 +5,40 @@ API
 .. note:: ADD DOCUMENTATION FOR SECTIONS BELOW!
 
 
-jade.transform
+iso.transform
 ==============
 
-.. autoclass:: jade.transform.Transform
+.. autoclass:: iso.transform.Transform
     :members:
 
-.. autoclass:: jade.transform.ComplexTransform
+.. autoclass:: iso.transform.ComplexTransform
     :members:
 
-.. autoclass:: jade.transform.Simulator
+.. autoclass:: iso.transform.Simulator
     :members:
 
-.. autoclass:: jade.transform.ComplexSimulator
+.. autoclass:: iso.transform.ComplexSimulator
     :members:
 
-.. autoclass:: jade.transform.Reduce
+.. autoclass:: iso.transform.Reduce
     :members:
 
-.. autoclass:: jade.transform.TransformChain
+.. autoclass:: iso.transform.TransformChain
     :members:
 
 
-jade.feature
+iso.feature
 ============
 
-.. autoclass:: jade.feature.Feature
+.. autoclass:: iso.feature.Feature
     :members:
 
-.. autoclass:: jade.feature.FeatureTransform
+.. autoclass:: iso.feature.FeatureTransform
     :members:
 
 
-jade.learn
+iso.learn
 ==========
 
-.. autoclass:: jade.learn.Learner
+.. autoclass:: iso.learn.Learner
     :members:

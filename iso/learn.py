@@ -24,7 +24,7 @@ from cached_property import cached_property
 
 from .transform import TransformChain, Reduce
 from .feature import FeatureTransform
-from .jade import session
+from .iso import session
 
 
 # config
@@ -73,7 +73,7 @@ class Learner(BaseEstimator):
 
         # handle non-compatible keras format
         if 'keras.models.Sequential' in str(type(model)):
-            raise AssertionError('Please use KerasClassifier or KerasRegressor object with jade Learner! See https://keras.io/scikit-learn-api/ for more info.')
+            raise AssertionError('Please use KerasClassifier or KerasRegressor object with iso Learner! See https://keras.io/scikit-learn-api/ for more info.')
 
         # save into non-parsed property (run generator if available)
         # self._model is used here so that different types of models from

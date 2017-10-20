@@ -10,9 +10,9 @@
 # -------
 import numpy
 
-from jade import Transform, ComplexTransform, TransformChain
-from jade import Simulator, ComplexSimulator
-from jade import Feature, FeatureTransform
+from iso import Transform, ComplexTransform, TransformChain
+from iso import Simulator, ComplexSimulator
+from iso import Feature, FeatureTransform
 
 
 # transforms

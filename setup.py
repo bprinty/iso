@@ -9,7 +9,7 @@
 
 # config
 # ------
-import jade
+import iso
 try:
     from setuptools import setup
 except ImportError:
@@ -36,24 +36,25 @@ with open('README.rst') as readme_file:
 # exec
 # ----
 setup(
-    name='jade',
-    version=jade.__version__,
+    name='iso',
+    version=iso.__version__,
     description='Package for managing data transformations in complex machine-learning workflows.',
     long_description=readme,
     author='Blake Printy',
     author_email='bprinty@gmail.com',
-    url='https://github.com/bprinty/jade.git',
-    packages=['jade'],
+    url='https://github.com/bprinty/iso.git',
+    packages=['iso'],
+    package_data={'iso': 'iso'},
     entry_points={
         'console_scripts': [
-            'jade = jade.__main__:main'
+            'iso = iso.__main__:main'
         ]
     },
     include_package_data=True,
     install_requires=requirements,
     license="Apache-2.0",
     zip_safe=False,
-    keywords=['jade', 'machine-learning', 'learning', 'data', 'modelling', 'ai'],
+    keywords=['iso', 'machine-learning', 'learning', 'data', 'modelling', 'ai'],
     classifiers=[
         'Intended Audience :: Developers',
         'License :: OSI Approved :: Apple Public Source License',

@@ -1,5 +1,5 @@
 #
-# jade Makefile
+# iso Makefile
 #
 # @author <bprinty@asuragen.com>
 # ------------------------------------------------------
@@ -8,7 +8,7 @@
 # config
 # ------
 REMOTE      = origin
-VERSION     = `python -c 'import jade; print jade.__version__'`
+VERSION     = `python -c 'import iso; print iso.__version__'`
 
 
 # targets
@@ -36,7 +36,7 @@ clean:
 
 
 lint:
-	flake8 jade tests
+	flake8 iso tests
 
 
 test: test-py2 test-py3
@@ -63,7 +63,7 @@ test-py3:
 
 tag:
 	VER=$(VERSION) && if [ `git tag | grep "$$VER" | wc -l` -ne 0 ]; then git tag -d $$VER; fi
-	VER=$(VERSION) && git tag $$VER -m "jade, release $$VER"
+	VER=$(VERSION) && git tag $$VER -m "iso, release $$VER"
 
 
 docs:
