@@ -18,7 +18,7 @@ from . import exc
 # ------
 __base__ = os.path.dirname(os.path.realpath(__file__))
 __default_config__ = os.path.join(__base__, '.iso')
-__user_config__ = os.path.join(os.getenv("HOME"), '.iso')
+__user_config__ = os.path.join(os.getenv("HOME", __default_config__), '.iso')
 
 
 class Session(object):
