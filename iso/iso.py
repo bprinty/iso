@@ -25,7 +25,7 @@ class Session(object):
     """
     Object to manage all session configuration.
     """
-    
+
     def __init__(self, cpus=1, db='/data/iso', data=None, models=None):
         self.cpus = cpus
         self.db = db
@@ -46,7 +46,7 @@ def options(**kwargs):
     # read default config
     with open(__default_config__, 'r') as cfig:
         config = composite.load(cfig)
-    
+
     # read and add user config
     if os.path.exists(__user_config__):
         with open(__user_config__, 'r') as cfig:

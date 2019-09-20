@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # testing for main entry point
-# 
-# @author <bprinty@asuragen.com>
+#
 # ------------------------------------------------
 
 
@@ -14,7 +13,7 @@ import unittest
 import subprocess
 
 import iso
-from . import __base__, __resources__, tmpfile
+from . import BASE
 
 
 # session
@@ -25,7 +24,7 @@ class TestEntryPoints(unittest.TestCase):
         python = 'python3' if sys.version_info > (3, 0) else 'python'
         return subprocess.check_output('{} -m iso {} {}'.format(
             python, subcommand, ' '.join(args)
-        ), stderr=subprocess.STDOUT, shell=True, cwd=__base__, env=os.environ.copy())
+        ), stderr=subprocess.STDOUT, shell=True, cwd=BASE, env=os.environ.copy())
 
     def test_version(self):
         res = self.call('version')

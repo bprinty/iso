@@ -125,7 +125,7 @@ class Learner(BaseEstimator):
                 return cls.from_config(filename)
             else:
                 return joblib.load(filename)
-        
+
         # try loading pickle from models directory
         elif os.path.exists(os.path.join(session.models, filename + '.pkl')):
             return joblib.load(os.path.join(session.models, filename + '.pkl'))

@@ -2,17 +2,25 @@
 #
 # testing for main entry point
 # 
-# @author <bprinty@asuragen.com>
 # ------------------------------------------------
 
 
-# imporobj
+# imports
 # -------
+import os
+import uuid
 import numpy
+from . import RESOURCES
 
 from iso import Transform, ComplexTransform, TransformChain
 from iso import Simulator, ComplexSimulator
 from iso import Feature, FeatureTransform
+
+
+# helpers
+# -------
+def tmpfile(ext):
+    return os.path.join(RESOURCES, 'tmp.{}{}'.format(uuid.uuid1(), ext))
 
 
 # transforms
@@ -22,7 +30,7 @@ class SignalGenerator(Transform):
         'sin': numpy.sin,
         'cos': numpy.cos
     }
-    
+
     def __init__(self, f=1, fs=1000):
         self.f = f
         self.fs = fs
@@ -39,7 +47,7 @@ class VariableSignalGenerator(Transform):
         'sin': numpy.sin,
         'cos': numpy.cos
     }
-    
+
     def __init__(self, fs=1000):
         self.fs = fs
         return
@@ -111,17 +119,17 @@ class FilterNoisiest(ComplexSimulator):
 
 
 class NormalizedPower(Feature):
-    
+
     def transform(self, x):
         return numpy.sum(numpy.abs(x)) / numpy.size(x)
 
 
 class DominantFrequency(Feature):
-    
+
     def __init__(self, fs=1000):
         self.fs = fs
         return
-    
+
     def transform(self, x):
         fx = numpy.fft.fft(x)
         ft = numpy.fft.fftfreq(len(x), 1.0 / float(self.fs))

@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # testing for main entry point
-# 
-# @author <bprinty@asuragen.com>
+#
 # ------------------------------------------------
 
 
@@ -15,7 +14,7 @@ from sklearn.svm import SVC
 
 from iso import Transform, ComplexTransform, TransformChain, Reduce
 from iso import FeatureTransform
-from . import __base__, __resources__, tmpfile
+from .utils import tmpfile
 from .utils import SignalGenerator
 from .utils import VariableSignalGenerator
 from .utils import SegmentSignal
@@ -44,7 +43,10 @@ class TestFeatureTransform(unittest.TestCase):
             )
         )
         xform.fit(self.data[:10])
-        self.assertEqual(map(list, numpy.round(xform._X, 2)), [[0.64, 5], [0.63, 6], [0.63, 6], [0.63, 7], [0.63, 7], [0.64, 8], [0.64, 8], [0.64, 9], [0.64, 9], [0.64, 10]])
+        self.assertEqual(
+            list(map(list, numpy.round(xform._X, 2))),
+            [[0.64, 5], [0.63, 6], [0.63, 6], [0.63, 7], [0.63, 7], [0.64, 8], [0.64, 8], [0.64, 9], [0.64, 9], [0.64, 10]]
+        )
         self.assertEqual(len(xform._X), 10)
         return
 

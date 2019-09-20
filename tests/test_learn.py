@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # testing for main entry point
-# 
-# @author <bprinty@asuragen.com>
+#
 # ------------------------------------------------
 
 
@@ -20,7 +19,7 @@ import random
 
 from iso import Learner, Validator, Reduce, FeatureTransform
 
-from . import __base__, __resources__, tmpfile
+from .utils import tmpfile
 from .utils import VariableSignalGenerator, SegmentSignal, WhiteNoise
 from .utils import NormalizedPower, DominantFrequency
 
@@ -213,7 +212,7 @@ class TestLearner(unittest.TestCase):
                 'ppv': metrics.recall_score
             }
         )
-        scoring = {k: round(v, 2) for k, v, in scoring.iteritems()}
+        scoring = {k: round(v, 2) for k, v, in scoring.items()}
         self.assertEqual(scoring, {'sens': 0.9, 'ppv': 0.95})
         return
 
