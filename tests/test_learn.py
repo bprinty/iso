@@ -237,7 +237,7 @@ class TestModelPersistence(unittest.TestCase):
                 WhiteNoise(clones=2),
                 SegmentSignal(),
                 Reduce()
-            ], model=SVC(kernel='rbf')
+            ], model=SVC(kernel='rbf', gamma='auto')
         )
         learner.fit(self.data, self.truth)
         test = list(self.data)
@@ -313,7 +313,7 @@ class TestValidator(unittest.TestCase):
             WhiteNoise(clones=2),
             SegmentSignal(),
             Reduce()
-        ], model=SVC(kernel='rbf')
+        ], model=SVC(kernel='rbf', gamma='auto')
     )
 
     def test_cv_score(self):
