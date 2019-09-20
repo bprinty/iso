@@ -1,3 +1,22 @@
+
+|Build status| |Code coverage| |Maintenance yes| |GitHub license| |Documentation Status|
+
+.. |Build status| image:: https://travis-ci.org/bprinty/iso.png?branch=master
+   :target: https://travis-ci.org/bprinty/iso
+
+.. |Code coverage| image:: https://codecov.io/gh/bprinty/iso/branch/master/graph/badge.svg
+   :target: https://codecov.io/gh/bprinty/iso
+
+.. |Maintenance yes| image:: https://img.shields.io/badge/Maintained%3F-yes-green.svg
+   :target: https://GitHub.com/Naereen/StrapDown.js/graphs/commit-activity
+
+.. |GitHub license| image:: https://img.shields.io/github/license/Naereen/StrapDown.js.svg
+   :target: https://github.com/bprinty/iso/blob/master/LICENSE
+
+.. |Documentation Status| image:: https://readthedocs.org/projects/iso/badge/?version=latest
+   :target: http://iso.readthedocs.io/?badge=latest
+
+
 ========
 iso
 ========
