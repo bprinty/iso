@@ -2,7 +2,6 @@
 #
 # Learner utilities.
 #
-# @author <bprinty@gmail.com>
 # ----------------------------------------------
 
 
@@ -13,9 +12,9 @@ import re
 import numpy
 import warnings
 import logging
+import joblib
 from sklearn.base import BaseEstimator, clone
 from sklearn.svm import SVC
-from sklearn.externals import joblib
 from sklearn.model_selection import train_test_split, KFold, LeaveOneOut, ShuffleSplit
 from sklearn.exceptions import UndefinedMetricWarning
 from sklearn import metrics
@@ -61,7 +60,7 @@ class Learner(BaseEstimator):
     _X = None
     _Y = None
 
-    def __init__(self, transform, model=SVC(), shaper=None, filename=None):
+    def __init__(self, transform, model=SVC(gamma='auto'), shaper=None, filename=None):
         # use composite transform for everything, so that
         # simulation processors can be skipped during prediction
         if isinstance(transform, TransformChain):

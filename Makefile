@@ -1,14 +1,15 @@
 #
-# iso Makefile
+# Makefile for managing development/deployment tasks
 #
-# @author <bprinty@asuragen.com>
 # ------------------------------------------------------
 
 
 # config
 # ------
-REMOTE      = origin
-VERSION     = `python -c 'import iso; print iso.__version__'`
+PROJECT    = iso
+REMOTE     = origin
+BRANCH     = `git branch | grep '*' | awk '{print "-"$$2}' | grep -v 'master'`
+VERSION    = `python -c 'import $(PROJECT); print($(PROJECT).__version__)'`
 
 
 # targets
@@ -16,71 +17,71 @@ VERSION     = `python -c 'import iso; print iso.__version__'`
 .PHONY: docs clean tag
 
 help:
-	@echo "clean    - remove all build, test, coverage and Python artifacts"
-	@echo "lint     - check style with flake8"
-	@echo "test     - run tests quickly with the default Python"
-	@echo "docs     - generate Sphinx HTML documentation, including API docs"
-	@echo "release  - package and upload a release"
-	@echo "build    - package module"
-	@echo "install  - install the package to the active Python's site-packages"
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
 
-clean:
+info: ## list info about package
+	@echo $(PROJECT), version $(VERSION)$(BRANCH)
+	@echo last updated: `git log | grep 'Date:' | head -1 | sed 's/Date:   //g'`
+
+
+clean: ## remove all intermediate artifacts
 	rm -fr build/
 	rm -fr dist/
 	rm -fr .eggs/
 	find . -name '__pycache__' -exec rm -fr {} +
 	find . -name '*.egg-info' -exec rm -fr {} +
 	find . -name '*.egg' -exec rm -fr {} +
-	rm -rf .py2 .py3
+	find . -name '*.py[co]' -exec rm -f {} +
 
 
-lint:
-	flake8 iso tests
+lint: ## check style with flake8
+	flake8 $(PROJECT) tests
 
 
-test: test-py2 test-py3
+test: test-py2 test-py3 ## run tests quickly with the default Python
 
 
 test-py2:
 	@echo "Running python2 tests ... "
-	virtualenv .py2
-	. .py2/bin/activate && \
-	pip install pytest pytest-runner && \
-	pip install -r requirements.txt && \
-	python setup.py test
+	virtualenv -p python2 .py2
+	. .py2/bin/activate
+	pip install -r requirements.txt
+	pip install -r tests/requirements.txt
+	pytest
 	rm -rf .py2
+
 
 test-py3:
 	@echo "Running python3 tests ... "
 	virtualenv -p python3 .py3
-	. .py3/bin/activate && \
-	pip3 install pytest pytest-runner && \
-	pip3 install -r requirements.txt && \
-	python3 setup.py test
+	. .py3/bin/activate
+	pip install -r requirements.txt
+	pip install -r tests/requirements.txt
+	pytest
 	rm -rf .py3
 
 
-tag:
+tag: # tag repository for release
 	VER=$(VERSION) && if [ `git tag | grep "$$VER" | wc -l` -ne 0 ]; then git tag -d $$VER; fi
-	VER=$(VERSION) && git tag $$VER -m "iso, release $$VER"
+	VER=$(VERSION) && git tag $$VER -m "$(PROJECT), release $$VER"
 
 
-docs:
+docs: ## build documentation
 	cd docs && make html
 
 
-build: clean
+build: clean ## build package for release
 	python setup.py sdist
 	python setup.py bdist_wheel
 	ls -l dist
 
 
-release: build tag
+release: build tag ## build package and push to pypi
 	VER=$(VERSION) && git push $(REMOTE) :$$VER || echo 'Remote tag available'
 	VER=$(VERSION) && git push $(REMOTE) $$VER
 	twine upload --skip-existing dist/*
 
 
-install: clean
+install: clean ## use setuptools to install package
 	python setup.py install
