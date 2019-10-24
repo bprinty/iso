@@ -1,8 +1,8 @@
 
 |Build status| |Code coverage| |Maintenance yes| |GitHub license| |Documentation Status|
 
-.. |Build status| image:: https://travis-ci.org/bprinty/iso.png?branch=master
-   :target: https://travis-ci.org/bprinty/iso
+.. |Build status| image:: https://travis-ci.com/bprinty/iso.png?branch=master
+   :target: https://travis-ci.com/bprinty/iso
 
 .. |Code coverage| image:: https://codecov.io/gh/bprinty/iso/branch/master/graph/badge.svg
    :target: https://codecov.io/gh/bprinty/iso
