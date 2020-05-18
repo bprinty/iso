@@ -1,87 +1,68 @@
 #
-# Makefile for managing development/deployment tasks
+# Makefile for python package
 #
 # ------------------------------------------------------
 
 
 # config
 # ------
-PROJECT    = iso
-REMOTE     = origin
-BRANCH     = `git branch | grep '*' | awk '{print "-"$$2}' | grep -v 'master'`
-VERSION    = `python -c 'import $(PROJECT); print($(PROJECT).__version__)'`
+PYTHON     = python3
+PROJECT    = `$(PYTHON) -c 'print(__import__("iso").__pkg__)'`
+VERSION    = `$(PYTHON) -c 'print(__import__("iso").__version__)'`
 
 
 # targets
 # -------
 .PHONY: docs clean tag
 
+.PHONY: help docs info clean init
+
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
 
 info: ## list info about package
-	@echo $(PROJECT), version $(VERSION)$(BRANCH)
-	@echo last updated: `git log | grep 'Date:' | head -1 | sed 's/Date:   //g'`
+	@echo "$(PROJECT), version $(VERSION)$(BRANCH)"
+	@echo last updated: `git log | grep --color=never 'Date:' | head -1 | sed 's/Date:   //g'`
 
 
-clean: ## remove all intermediate artifacts
-	rm -fr build/
-	rm -fr dist/
-	rm -fr .eggs/
-	find . -name '__pycache__' -exec rm -fr {} +
+clean: ## remove build and test artifacts
+	rm -fr build dist .eggs .pytest_cache
 	find . -name '*.egg-info' -exec rm -fr {} +
-	find . -name '*.egg' -exec rm -fr {} +
+	find . -name '*.egg' -exec rm -f {} +
 	find . -name '*.py[co]' -exec rm -f {} +
+	find . -name '*~' -exec rm -f {} +
+	find . -name '__pycache__' -exec rm -fr {} +
 
 
 lint: ## check style with flake8
-	flake8 $(PROJECT) tests
+	flake8 lib tests
 
 
-test: test-py2 test-py3 ## run tests quickly with the default Python
+test: ## run tests for package
+	$(PYTHON) -m pytest tests
 
 
-test-py2:
-	@echo "Running python2 tests ... "
-	virtualenv -p python2 .py2
-	. .py2/bin/activate
-	pip install -r requirements.txt
-	pip install -r tests/requirements.txt
-	pytest
-	rm -rf .py2
-
-
-test-py3:
-	@echo "Running python3 tests ... "
-	virtualenv -p python3 .py3
-	. .py3/bin/activate
-	pip install -r requirements.txt
-	pip install -r tests/requirements.txt
-	pytest
-	rm -rf .py3
-
-
-tag: # tag repository for release
+tag: ## tag repository for release
 	VER=$(VERSION) && if [ `git tag | grep "$$VER" | wc -l` -ne 0 ]; then git tag -d $$VER; fi
 	VER=$(VERSION) && git tag $$VER -m "$(PROJECT), release $$VER"
 
 
-docs: ## build documentation
+docs: ## generate sphinx documentation
 	cd docs && make html
 
 
-build: clean ## build package for release
-	python setup.py sdist
-	python setup.py bdist_wheel
+build: clean ## build package
+	$(PYTHON) setup.py sdist
+	$(PYTHON) setup.py bdist_wheel
 	ls -l dist
 
 
-release: build tag ## build package and push to pypi
-	VER=$(VERSION) && git push $(REMOTE) :$$VER || echo 'Remote tag available'
-	VER=$(VERSION) && git push $(REMOTE) $$VER
+release: build tag ## release package by pushing tags to github/pypi
+	VER=$(VERSION) && git push origin :$$VER || echo 'Remote tag available'
+	VER=$(VERSION) && git push origin $$VER
 	twine upload --skip-existing dist/*
 
 
-install: clean ## use setuptools to install package
-	python setup.py install
+install: clean ## install package using setuptools
+	$(PYTHON) setup.py install
